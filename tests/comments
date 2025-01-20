@@ -1,0 +1,10 @@
+fun main(){
+    // Single line comment
+    return 0;
+}
+
+/*
+    Multi
+    line 
+    comment
+*/

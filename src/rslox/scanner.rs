@@ -197,6 +197,9 @@ impl Scanner {
                         self.advance();
                     }
                     Ok(None)
+                } else if self.match_char('*') {
+                    self.scan_multi_line_comment()?;
+                    Ok(None)
                 } else {
                     Ok(Some(Token {
                         lexeme: c.to_string(),
@@ -244,6 +247,20 @@ impl Scanner {
         }
     }
 
+    fn scan_multi_line_comment(&mut self) -> Result<Option<Token>, ScannerError> {
+        while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
+            if self.peek() == '\n' {
+                self.line += 1;
+            }
+            self.advance();
+        }
+        if self.is_at_end() {
+            return Err(ScannerError::UnterminatedComment(self.line));
+        }
+        self.advance();
+        self.advance();
+        Ok(None)
+    }
     fn scan_identifier(&mut self, c: char) -> Result<String, ScannerError> {
         let mut result = String::from(c);
         while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
@@ -261,7 +278,7 @@ impl Scanner {
             result.push(self.advance());
         }
         if self.is_at_end() {
-            return Err(ScannerError::UnterminatedString(result));
+            return Err(ScannerError::UnterminatedString(result, self.line));
         }
         self.advance();
         return Ok(result);
@@ -368,9 +385,15 @@ pub enum TokenType {
     EOF,
 }
 
+impl std::fmt::Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
 pub enum ScannerError {
     UnexpectedCharacter(char, usize),
-    UnterminatedString(String),
+    UnterminatedString(String, usize),
+    UnterminatedComment(usize),
 }
 impl ScannerError {
     pub fn message(&self) -> String {
@@ -378,7 +401,12 @@ impl ScannerError {
             ScannerError::UnexpectedCharacter(c, line) => {
                 format!("Unexpected character: {} at line {}", c, line)
             }
-            ScannerError::UnterminatedString(str) => format!("Unterminated string: {}", str),
+            ScannerError::UnterminatedComment(line) => {
+                format!("Unterminated comment at line {}", line)
+            }
+            ScannerError::UnterminatedString(str, line) => {
+                format!("Unterminated string: {} at line {}", str, line)
+            }
         }
     }
 }
