@@ -2,7 +2,10 @@
 run: build
 	./target/release/$(shell cat Cargo.toml | grep name | cut -d \" -f 2)
 
-build:
+build: format
 	cargo build --release
 
-.PHONY: build
+format:
+	cargo fmt
+
+.PHONY: build run format
