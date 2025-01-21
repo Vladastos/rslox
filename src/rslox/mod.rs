@@ -1,6 +1,8 @@
 mod scanner;
 use std::io::Write;
 
+use thiserror::Error;
+
 //
 // Lox
 //
@@ -15,10 +17,7 @@ impl Lox {
         let source_result = std::fs::read_to_string(filepath);
 
         if source_result.is_err() {
-            return Err(LoxError::FileError(format!(
-                "Could not read file: {}",
-                filepath
-            )));
+            return Err(LoxError::FileError(filepath.to_string()));
         }
         let source = source_result.unwrap();
 
@@ -74,24 +73,10 @@ impl Lox {
 // Errors
 //
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum LoxError {
+    #[error("Could not read file: {}", .0)]
     FileError(String),
+    #[error("Error: {}", .0)]
     InternalError(String),
 }
-
-impl LoxError {
-    pub fn message(&self) -> String {
-        match self {
-            LoxError::FileError(msg) => msg.to_string(),
-            LoxError::InternalError(msg) => msg.to_string(),
-        }
-    }
-}
-
-impl std::fmt::Display for LoxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Error: {}", self.message())
-    }
-}
-impl std::error::Error for LoxError {}

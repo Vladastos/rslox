@@ -1,6 +1,8 @@
 use std::collections::hash_map::HashMap;
 use std::sync::LazyLock;
 
+use thiserror::Error;
+
 static KEYWORDS: LazyLock<HashMap<String, TokenType>> = LazyLock::new(|| {
     HashMap::from([
         ("and".to_string(), TokenType::And),
@@ -55,7 +57,7 @@ impl Scanner {
                 Ok(Some(token)) => tokens.push(token),
                 Ok(None) => {}
                 Err(error) => {
-                    println!("{}", error.message());
+                    println!("{}", error);
                     had_error = true;
                 }
             }
@@ -390,29 +392,13 @@ impl std::fmt::Display for TokenType {
         write!(f, "{:?}", self)
     }
 }
-pub enum ScannerError {
-    UnexpectedCharacter(char, usize),
-    UnterminatedString(String, usize),
-    UnterminatedComment(usize),
-}
-impl ScannerError {
-    pub fn message(&self) -> String {
-        match self {
-            ScannerError::UnexpectedCharacter(c, line) => {
-                format!("Unexpected character: {} at line {}", c, line)
-            }
-            ScannerError::UnterminatedComment(line) => {
-                format!("Unterminated comment at line {}", line)
-            }
-            ScannerError::UnterminatedString(str, line) => {
-                format!("Unterminated string: {} at line {}", str, line)
-            }
-        }
-    }
-}
 
-impl std::fmt::Display for ScannerError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Scanner Error: : {}", self.message())
-    }
+#[derive(Error, Debug)]
+pub enum ScannerError {
+    #[error("Unexpected character: {0} at line {1}")]
+    UnexpectedCharacter(char, usize),
+    #[error("Unterminated string: {0} at line {1}")]
+    UnterminatedString(String, usize),
+    #[error("Unterminated comment at line {0}")]
+    UnterminatedComment(usize),
 }
