@@ -263,6 +263,7 @@ impl Scanner {
         self.advance();
         Ok(None)
     }
+
     fn scan_identifier(&mut self, c: char) -> Result<String, ScannerError> {
         let mut result = String::from(c);
         while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
@@ -320,6 +321,9 @@ impl Scanner {
 
     fn peek_next(&mut self) -> char {
         if self.is_at_end() {
+            return '\0';
+        }
+        if self.current + 1 >= self.source_length {
             return '\0';
         }
         return self.source.chars().nth(self.current + 1).unwrap();

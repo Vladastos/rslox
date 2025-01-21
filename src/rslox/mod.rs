@@ -1,6 +1,8 @@
+mod parser;
 mod scanner;
 use std::io::Write;
 
+use log::{debug, error, info};
 use thiserror::Error;
 
 //
@@ -53,18 +55,22 @@ impl Lox {
     }
 
     fn run(&mut self, source: &str) -> Result<(), LoxError> {
-        // Get tokens
+        // Scan the source code into tokens
+        debug!("Scanning source code");
         let mut scanner = scanner::Scanner::new(source);
-
         let scan_result = scanner.scan_tokens();
-
         if scan_result.is_err() {
             return Err(LoxError::InternalError(format!("Invalid syntax")));
         }
-
         let tokens = scan_result.unwrap();
 
-        println!("{:?}", tokens);
+        // Parse the tokens
+        let mut parser = parser::Parser::new();
+        let parse_result = parser.parse(tokens);
+        if parse_result.is_err() {
+            return Err(LoxError::InternalError(format!("Invalid syntax")));
+        }
+
         return Ok(());
     }
 }

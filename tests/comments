@@ -1,7 +1,5 @@
-fun main(){
-    // Single line comment
-    return 0;
-}
+
+// Single line comment
 
 /*
     Multi

@@ -2,6 +2,9 @@ mod rslox;
 use rslox::LoxError;
 
 fn main() {
+    // Set up logging
+    env_logger::init_from_env(env_logger::Env::new().default_filter_or("trace"));
+
     let mut lox = rslox::Lox::new();
     let args: Vec<String> = std::env::args().collect();
 
