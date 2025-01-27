@@ -3,24 +3,24 @@ use std::sync::LazyLock;
 
 use thiserror::Error;
 
-static KEYWORDS: LazyLock<HashMap<String, TokenType>> = LazyLock::new(|| {
+static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
     HashMap::from([
-        ("and".to_string(), TokenType::And),
-        ("class".to_string(), TokenType::Class),
-        ("else".to_string(), TokenType::Else),
-        ("false".to_string(), TokenType::False),
-        ("for".to_string(), TokenType::For),
-        ("fun".to_string(), TokenType::Fun),
-        ("if".to_string(), TokenType::If),
-        ("nil".to_string(), TokenType::Nil),
-        ("or".to_string(), TokenType::Or),
-        ("print".to_string(), TokenType::Print),
-        ("return".to_string(), TokenType::Return),
-        ("super".to_string(), TokenType::Super),
-        ("this".to_string(), TokenType::This),
-        ("true".to_string(), TokenType::True),
-        ("var".to_string(), TokenType::Var),
-        ("while".to_string(), TokenType::While),
+        ("and", TokenType::And),
+        ("class", TokenType::Class),
+        ("else", TokenType::Else),
+        ("false", TokenType::False),
+        ("for", TokenType::For),
+        ("fun", TokenType::Fun),
+        ("if", TokenType::If),
+        ("nil", TokenType::Nil),
+        ("or", TokenType::Or),
+        ("print", TokenType::Print),
+        ("return", TokenType::Return),
+        ("super", TokenType::Super),
+        ("this", TokenType::This),
+        ("true", TokenType::True),
+        ("var", TokenType::Var),
+        ("while", TokenType::While),
     ])
 });
 
@@ -34,19 +34,16 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
-    keywords: &'static HashMap<String, TokenType>,
 }
 
 impl Scanner {
     pub fn new(source: &str) -> Scanner {
-        let keywords = &KEYWORDS;
         Scanner {
             source: source.to_string(),
             source_length: source.chars().count(),
             start: 0,
             current: 0,
             line: 1,
-            keywords,
         }
     }
 
@@ -69,6 +66,7 @@ impl Scanner {
         tokens.push(Token {
             lexeme: "".to_string(),
             token_type: TokenType::EOF,
+            literal: None,
             line: self.line,
         });
 
@@ -81,51 +79,61 @@ impl Scanner {
             '(' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::LeftParen,
+                literal: None,
                 line: self.line,
             })),
             ')' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::RightParen,
+                literal: None,
                 line: self.line,
             })),
             '{' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::LeftBrace,
+                literal: None,
                 line: self.line,
             })),
             '}' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::RightBrace,
+                literal: None,
                 line: self.line,
             })),
             ',' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Comma,
+                literal: None,
                 line: self.line,
             })),
             '.' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Dot,
+                literal: None,
                 line: self.line,
             })),
             '-' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Minus,
+                literal: None,
                 line: self.line,
             })),
             '+' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Plus,
+                literal: None,
                 line: self.line,
             })),
             ';' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Semicolon,
+                literal: None,
                 line: self.line,
             })),
             '*' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Star,
+                literal: None,
                 line: self.line,
             })),
             '!' => {
@@ -142,6 +150,7 @@ impl Scanner {
                 Ok(Some(Token {
                     lexeme,
                     token_type,
+                    literal: None,
                     line: self.line,
                 }))
             }
@@ -159,6 +168,7 @@ impl Scanner {
                 Ok(Some(Token {
                     lexeme,
                     token_type,
+                    literal: None,
                     line: self.line,
                 }))
             }
@@ -176,6 +186,7 @@ impl Scanner {
                 Ok(Some(Token {
                     lexeme,
                     token_type,
+                    literal: None,
                     line: self.line,
                 }))
             }
@@ -193,6 +204,7 @@ impl Scanner {
                 Ok(Some(Token {
                     lexeme,
                     token_type,
+                    literal: None,
                     line: self.line,
                 }))
             }
@@ -209,6 +221,7 @@ impl Scanner {
                     Ok(Some(Token {
                         lexeme: c.to_string(),
                         token_type: TokenType::Slash,
+                        literal: None,
                         line: self.line,
                     }))
                 }
@@ -221,28 +234,31 @@ impl Scanner {
             '"' => {
                 let lexeme = self.scan_string()?;
                 Ok(Some(Token {
-                    lexeme,
+                    lexeme: lexeme.to_string(),
                     token_type: TokenType::String,
+                    literal: Option::from(lexeme),
                     line: self.line,
                 }))
             }
             '0'..='9' => {
                 let lexeme = self.scan_number()?;
                 Ok(Some(Token {
-                    lexeme,
+                    lexeme: lexeme.to_string(),
                     token_type: TokenType::Number,
+                    literal: Option::from(lexeme),
                     line: self.line,
                 }))
             }
             'a'..='z' | 'A'..='Z' | '_' => {
                 let lexeme = self.scan_identifier(c)?;
-                let token_type = match self.keywords.get(&lexeme) {
+                let token_type = match (*KEYWORDS).get(&lexeme.as_str()) {
                     Some(t) => *t,
                     None => TokenType::Identifier,
                 };
                 Ok(Some(Token {
-                    lexeme,
+                    lexeme: lexeme.to_string(),
                     token_type,
+                    literal: Option::from(lexeme),
                     line: self.line,
                 }))
             }
@@ -347,8 +363,15 @@ impl Scanner {
 #[derive(Debug, Clone)]
 pub struct Token {
     pub lexeme: String,
+    pub literal: Option<String>,
     pub token_type: TokenType,
     pub line: usize,
+}
+
+impl std::fmt::Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.lexeme)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
