@@ -34,16 +34,19 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    keywords: &'static HashMap<String, TokenType>,
 }
 
 impl Scanner {
     pub fn new(source: &str) -> Scanner {
+        let keywords = &KEYWORDS;
         Scanner {
             source: source.to_string(),
             source_length: source.chars().count(),
             start: 0,
             current: 0,
             line: 1,
+            keywords,
         }
     }
 
@@ -233,7 +236,7 @@ impl Scanner {
             }
             'a'..='z' | 'A'..='Z' | '_' => {
                 let lexeme = self.scan_identifier(c)?;
-                let token_type = match KEYWORDS.get(&lexeme) {
+                let token_type = match self.keywords.get(&lexeme) {
                     Some(t) => *t,
                     None => TokenType::Identifier,
                 };
@@ -341,7 +344,7 @@ impl Scanner {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub lexeme: String,
     pub token_type: TokenType,

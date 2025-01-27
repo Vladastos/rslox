@@ -65,8 +65,8 @@ impl Lox {
         let tokens = scan_result.unwrap();
 
         // Parse the tokens
-        let mut parser = parser::Parser::new();
-        let parse_result = parser.parse(tokens);
+        let mut parser = parser::Parser::new(tokens);
+        let parse_result = parser.parse();
         if parse_result.is_err() {
             return Err(LoxError::InternalError(format!("Invalid syntax")));
         }
