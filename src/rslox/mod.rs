@@ -71,7 +71,7 @@ impl Lox {
             println!("{}", parse_result.unwrap_err());
             return Err(LoxError::InternalError(format!("Invalid syntax")));
         }
-
+        debug!("Parsed expression: {:#?}", parse_result.unwrap());
         return Ok(());
     }
 }

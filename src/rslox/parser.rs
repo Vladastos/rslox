@@ -1,3 +1,9 @@
+// TODO:
+//  - Add more error types
+//  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
+//
+
+
 use log::trace;
 use thiserror::Error;
 
@@ -31,13 +37,7 @@ impl Parser {
         while self.match_token(scanner::TokenType::BangEqual)
             || self.match_token(scanner::TokenType::EqualEqual)
         {
-            let operator_result = self.previous();
-            if operator_result.is_err() {
-                return Err(ParserError::InternalError(
-                    "Could not get operator".to_string(),
-                ));
-            }
-            let operator = operator_result.unwrap();
+            let operator = self.previous().unwrap();
 
             let right = self.parse_comparison()?;
             expr = Expr::Binary {
@@ -73,7 +73,7 @@ impl Parser {
             || self.match_token(scanner::TokenType::Plus)
         {
             let operator = self.previous().unwrap();
-            let right = self.parse_factor().unwrap();
+            let right = self.parse_factor()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -89,7 +89,7 @@ impl Parser {
             || self.match_token(scanner::TokenType::Star)
         {
             let operator = self.previous().unwrap();
-            let right = self.parse_unary().unwrap();
+            let right = self.parse_unary()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -103,7 +103,9 @@ impl Parser {
         if self.match_token(scanner::TokenType::Bang) || self.match_token(scanner::TokenType::Minus)
         {
             let operator = self.previous().unwrap();
-            let right = self.parse_unary().unwrap();
+
+            let right = self.parse_unary()?;
+
             return Ok(Expr::Unary {
                 operator,
                 right: Box::new(right),
@@ -139,12 +141,25 @@ impl Parser {
             });
         }
 
+        if self.match_token(scanner::TokenType::LeftParen) {
+            let expr = self.parse_expression()?;
+            self.consume(
+                scanner::TokenType::RightParen,
+                "Expected ')' after expression.",
+            )?;
+            return Ok(Expr::Grouping {
+                expression: Box::new(expr),
+            });
+        }
+
         return Err(ParserError::InternalError(format!(
             "Could not parse token : {} ",
             self.peek()
         )));
     }
+
     // Utils
+
     fn advance(&mut self) -> scanner::Token {
         self.current += 1;
         self.tokens[self.current - 1].clone()
@@ -158,11 +173,23 @@ impl Parser {
         self.tokens[self.current].clone()
     }
 
-    fn previous(&self) -> Result<scanner::Token, ()> {
+    fn previous(&self) -> Option<scanner::Token> {
         if self.current == 0 {
-            return Err(());
+            return Option::None;
         }
-        Ok(self.tokens[self.current - 1].clone())
+        Option::Some(self.tokens[self.current - 1].clone())
+    }
+
+    fn consume(
+        &mut self,
+        token_type: scanner::TokenType,
+        message: &str,
+    ) -> Result<(), ParserError> {
+        if self.peek().token_type == token_type {
+            self.advance();
+            return Ok(());
+        }
+        return Err(ParserError::InternalError(message.to_string()));
     }
 
     fn match_token(&mut self, token_type: scanner::TokenType) -> bool {
@@ -206,8 +233,6 @@ pub enum Expr {
 
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("Unexpected token: {0}")]
-    UnexpectedToken(scanner::Token),
-    #[error("Internal error: {0}")]
+    #[error("Parsing error: {0}")]
     InternalError(String),
 }
