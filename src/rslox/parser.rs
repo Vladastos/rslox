@@ -3,7 +3,6 @@
 //  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
 //
 
-
 use log::trace;
 use thiserror::Error;
 
@@ -34,11 +33,10 @@ impl Parser {
 
     fn parse_equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_comparison()?;
-        while self.match_token(scanner::TokenType::BangEqual)
-            || self.match_token(scanner::TokenType::EqualEqual)
-        {
-            let operator = self.previous().unwrap();
-
+        while let Some(operator) = self.match_tokens(vec![
+            scanner::TokenType::BangEqual,
+            scanner::TokenType::EqualEqual,
+        ]) {
             let right = self.parse_comparison()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -51,12 +49,12 @@ impl Parser {
 
     fn parse_comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_term()?;
-        while self.match_token(scanner::TokenType::Greater)
-            || self.match_token(scanner::TokenType::GreaterEqual)
-            || self.match_token(scanner::TokenType::Less)
-            || self.match_token(scanner::TokenType::LessEqual)
-        {
-            let operator = self.previous().unwrap();
+        while let Some(operator) = self.match_tokens(vec![
+            scanner::TokenType::Greater,
+            scanner::TokenType::GreaterEqual,
+            scanner::TokenType::Less,
+            scanner::TokenType::LessEqual,
+        ]) {
             let right = self.parse_term().unwrap();
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -69,10 +67,9 @@ impl Parser {
 
     fn parse_term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_factor()?;
-        while self.match_token(scanner::TokenType::Minus)
-            || self.match_token(scanner::TokenType::Plus)
+        while let Some(operator) =
+            self.match_tokens(vec![scanner::TokenType::Plus, scanner::TokenType::Minus])
         {
-            let operator = self.previous().unwrap();
             let right = self.parse_factor()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -85,10 +82,9 @@ impl Parser {
 
     fn parse_factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_unary()?;
-        while self.match_token(scanner::TokenType::Slash)
-            || self.match_token(scanner::TokenType::Star)
+        while let Some(operator) =
+            self.match_tokens(vec![scanner::TokenType::Star, scanner::TokenType::Slash])
         {
-            let operator = self.previous().unwrap();
             let right = self.parse_unary()?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -100,10 +96,9 @@ impl Parser {
     }
 
     fn parse_unary(&mut self) -> Result<Expr, ParserError> {
-        if self.match_token(scanner::TokenType::Bang) || self.match_token(scanner::TokenType::Minus)
+        if let Some(operator) =
+            self.match_tokens(vec![scanner::TokenType::Bang, scanner::TokenType::Minus])
         {
-            let operator = self.previous().unwrap();
-
             let right = self.parse_unary()?;
 
             return Ok(Expr::Unary {
@@ -115,33 +110,33 @@ impl Parser {
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
-        if self.match_token(scanner::TokenType::False) {
+        if self.match_token(scanner::TokenType::False).is_some() {
             return Ok(Expr::Literal {
                 value: String::from("false"),
             });
         }
-        if self.match_token(scanner::TokenType::True) {
+        if self.match_token(scanner::TokenType::True).is_some() {
             return Ok(Expr::Literal {
                 value: String::from("true"),
             });
         }
-        if self.match_token(scanner::TokenType::Nil) {
+        if self.match_token(scanner::TokenType::Nil).is_some() {
             return Ok(Expr::Literal {
                 value: String::from("nil"),
             });
         }
-        if self.match_token(scanner::TokenType::Number) {
+        if let Some(token) = self.match_token(scanner::TokenType::Number) {
             return Ok(Expr::Literal {
-                value: self.previous().unwrap().literal.unwrap(),
+                value: token.literal.unwrap(),
             });
         }
-        if self.match_token(scanner::TokenType::String) {
+        if let Some(token) = self.match_token(scanner::TokenType::String) {
             return Ok(Expr::Literal {
-                value: self.previous().unwrap().literal.unwrap(),
+                value: token.literal.unwrap(),
             });
         }
 
-        if self.match_token(scanner::TokenType::LeftParen) {
+        if self.match_token(scanner::TokenType::LeftParen).is_some() {
             let expr = self.parse_expression()?;
             self.consume(
                 scanner::TokenType::RightParen,
@@ -173,13 +168,6 @@ impl Parser {
         self.tokens[self.current].clone()
     }
 
-    fn previous(&self) -> Option<scanner::Token> {
-        if self.current == 0 {
-            return Option::None;
-        }
-        Option::Some(self.tokens[self.current - 1].clone())
-    }
-
     fn consume(
         &mut self,
         token_type: scanner::TokenType,
@@ -192,15 +180,28 @@ impl Parser {
         return Err(ParserError::InternalError(message.to_string()));
     }
 
-    fn match_token(&mut self, token_type: scanner::TokenType) -> bool {
+    fn match_token(&mut self, token_type: scanner::TokenType) -> Option<scanner::Token> {
         if self.is_at_end() {
-            return false;
+            return None;
         }
         if self.peek().token_type != token_type {
-            return false;
+            return None;
         }
+        let token = self.peek().clone();
         self.advance();
-        return true;
+        return Some(token);
+    }
+
+    fn match_tokens(&mut self, tokens: Vec<scanner::TokenType>) -> Option<scanner::Token> {
+        if self.is_at_end() {
+            return None;
+        }
+        for token_type in tokens {
+            if self.peek().token_type == token_type {
+                return Some(self.advance());
+            }
+        }
+        return None;
     }
 }
 
