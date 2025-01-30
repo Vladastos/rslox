@@ -17,12 +17,10 @@ impl Lox {
         Lox
     }
     pub fn run_file(&mut self, filepath: &str) -> Result<(), LoxError> {
-        let source_result = std::fs::read_to_string(filepath);
-
-        if source_result.is_err() {
-            return Err(LoxError::FileError(filepath.to_string()));
-        }
-        let source = source_result.unwrap();
+        let source = std::fs::read_to_string(filepath).map_err(|source| LoxError::FileError {
+            path: filepath.to_owned(),
+            source,
+        })?;
 
         self.run(&source)?;
         Ok(())
@@ -33,11 +31,7 @@ impl Lox {
             let mut line = String::new();
             print!("> ");
             std::io::stdout().flush().unwrap();
-            let read_result = std::io::stdin().read_line(&mut line);
-
-            if read_result.is_err() {
-                return Err(LoxError::IoError(read_result.unwrap_err()));
-            }
+            std::io::stdin().read_line(&mut line)?;
 
             // Check for EOF
             if line.trim().is_empty() {
@@ -73,8 +67,12 @@ impl Lox {
 
 #[derive(Debug, Error)]
 pub enum LoxError {
-    #[error("Could not open file {_0}")]
-    FileError(String),
+    #[error("Could not open file {path}")]
+    FileError {
+        path: String,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("Syntax error")]
     ScanningError(
         #[source]
@@ -82,7 +80,7 @@ pub enum LoxError {
         ScannerError,
     ),
     // this is an horrible way to solve the problem of multiple sources
-    #[error("Syntax error: {}", _0.into_iter().map(|e| format!("\t{} \n", e)).collect::<String>())]
+    #[error("Syntax error: {}", _0.iter().map(|e| format!("\t{} \n", e)).collect::<String>())]
     ParsingError(Vec<ParserError>),
     #[error("Runtime error")]
     RuntimeError(
