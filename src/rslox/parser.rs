@@ -4,7 +4,7 @@
 
 use crate::rslox::scanner;
 
-use super::ParserError;
+use super::{scanner::Token, ParserError};
 
 /// Parser
 
@@ -188,10 +188,14 @@ impl Parser {
             });
         }
 
+        let &Token {
+            token_type,
+            line,
+            column,
+            ..
+        } = self.peek();
         Err(ParserError::UnexpectedTokenNoExpected(
-            self.peek().token_type,
-            self.peek().line,
-            self.peek().column,
+            token_type, line, column,
         ))
     }
 
