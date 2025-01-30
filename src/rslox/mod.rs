@@ -84,7 +84,7 @@ impl std::fmt::Display for LoxError {
         match self {
             LoxError::FileError(path) => write!(f, "Error: Could not open file: {}", path),
             LoxError::ScanningError(error) => {
-                write!(f, "Syntax error: : {}", error.to_string())
+                write!(f, "Syntax error: : {}", error)
             }
             LoxError::ParsingError(errors) => {
                 let errors_string: String =
@@ -92,10 +92,10 @@ impl std::fmt::Display for LoxError {
                 write!(f, "Syntax error:\n{}", errors_string)
             }
             LoxError::RuntimeError(message) => {
-                write!(f, "Runtime error: {}", message.to_string())
+                write!(f, "Runtime error: {}", message)
             }
             LoxError::IoError(error) => {
-                write!(f, "IO error: {}", error.to_string())
+                write!(f, "IO error: {}", error)
             }
         }
     }
