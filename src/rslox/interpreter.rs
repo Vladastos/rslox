@@ -116,9 +116,9 @@ enum LoxValue {
 impl std::fmt::Display for LoxValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoxValue::Number(value) => write!(f, "{}", value),
-            LoxValue::String(value) => write!(f, "{}", value),
-            LoxValue::Boolean(value) => write!(f, "{}", value),
+            LoxValue::Number(value) => write!(f, "{value}"),
+            LoxValue::String(value) => write!(f, "{value}"),
+            LoxValue::Boolean(value) => write!(f, "{value}"),
             LoxValue::Nil => write!(f, "nil"),
         }
     }

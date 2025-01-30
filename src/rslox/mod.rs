@@ -80,7 +80,7 @@ pub enum LoxError {
         ScannerError,
     ),
     // this is an horrible way to solve the problem of multiple sources
-    #[error("Syntax error: {}", _0.iter().map(|e| format!("\t{} \n", e)).collect::<String>())]
+    #[error("Syntax error: {}", _0.iter().map(|e| format!("\t{e} \n")).collect::<String>())]
     ParsingError(Vec<ParserError>),
     #[error("Runtime error")]
     RuntimeError(

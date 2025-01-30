@@ -485,6 +485,6 @@ impl std::fmt::Display for TokenType {
             TokenType::While => "while",
             TokenType::EOF => "EOF",
         };
-        write!(f, "{:?}", s)
+        write!(f, "{s:?}")
     }
 }
