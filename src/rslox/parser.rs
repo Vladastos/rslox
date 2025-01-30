@@ -67,7 +67,7 @@ impl Parser {
 
     fn parse_equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_comparison()?;
-        while let Some(operator) = self.match_tokens(vec![
+        while let Some(operator) = self.match_tokens(&[
             scanner::TokenType::BangEqual,
             scanner::TokenType::EqualEqual,
         ]) {
@@ -84,7 +84,7 @@ impl Parser {
 
     fn parse_comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_term()?;
-        while let Some(operator) = self.match_tokens(vec![
+        while let Some(operator) = self.match_tokens(&[
             scanner::TokenType::Greater,
             scanner::TokenType::GreaterEqual,
             scanner::TokenType::Less,
@@ -104,7 +104,7 @@ impl Parser {
     fn parse_term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_factor()?;
         while let Some(operator) =
-            self.match_tokens(vec![scanner::TokenType::Plus, scanner::TokenType::Minus])
+            self.match_tokens(&[scanner::TokenType::Plus, scanner::TokenType::Minus])
         {
             let right = self.parse_factor()?;
 
@@ -122,7 +122,7 @@ impl Parser {
     fn parse_factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_unary()?;
         while let Some(operator) =
-            self.match_tokens(vec![scanner::TokenType::Star, scanner::TokenType::Slash])
+            self.match_tokens(&[scanner::TokenType::Star, scanner::TokenType::Slash])
         {
             let right = self.parse_unary()?;
 
@@ -139,7 +139,7 @@ impl Parser {
 
     fn parse_unary(&mut self) -> Result<Expr, ParserError> {
         if let Some(operator) =
-            self.match_tokens(vec![scanner::TokenType::Bang, scanner::TokenType::Minus])
+            self.match_tokens(&[scanner::TokenType::Bang, scanner::TokenType::Minus])
         {
             let right = self.parse_unary()?;
 
@@ -239,12 +239,12 @@ impl Parser {
         Some(token)
     }
 
-    fn match_tokens(&mut self, tokens: Vec<scanner::TokenType>) -> Option<scanner::Token> {
+    fn match_tokens(&mut self, tokens: &[scanner::TokenType]) -> Option<scanner::Token> {
         if self.is_at_end() {
             return None;
         }
         for token_type in tokens {
-            if self.peek().token_type == token_type {
+            if &self.peek().token_type == token_type {
                 return self.advance();
             }
         }
