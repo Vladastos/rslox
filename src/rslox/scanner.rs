@@ -1,7 +1,7 @@
 use std::collections::hash_map::HashMap;
 use std::sync::LazyLock;
 
-use thiserror::Error;
+use super::ScannerError;
 
 static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
     HashMap::from([
@@ -47,7 +47,7 @@ impl Scanner {
         }
     }
 
-    pub fn scan_tokens(&mut self) -> Result<Vec<Token>, Vec<Token>> {
+    pub fn scan_tokens(&mut self) -> Result<Vec<Token>, ScannerError> {
         let mut tokens: Vec<Token> = Vec::new();
         let mut had_error = false;
 
@@ -419,16 +419,47 @@ pub enum TokenType {
 
 impl std::fmt::Display for TokenType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
+        let s = match self {
+            TokenType::LeftParen => "(",
+            TokenType::RightParen => ")",
+            TokenType::LeftBrace => "{",
+            TokenType::RightBrace => "}",
+            TokenType::Comma => ",",
+            TokenType::Dot => ".",
+            TokenType::And => "and",
+            TokenType::Class => "class",
+            TokenType::Else => "else",
+            TokenType::False => "false",
+            TokenType::Fun => "fun",
+            TokenType::For => "for",
+            TokenType::Minus => "-",
+            TokenType::Plus => "+",
+            TokenType::Semicolon => ";",
+            TokenType::Slash => "/",
+            TokenType::Star => "*",
+            TokenType::Bang => "!",
+            TokenType::BangEqual => "!=",
+            TokenType::Equal => "=",
+            TokenType::EqualEqual => "==",
+            TokenType::Greater => ">",
+            TokenType::GreaterEqual => ">=",
+            TokenType::Less => "<",
+            TokenType::LessEqual => "<=",
+            TokenType::Identifier => "identifier",
+            TokenType::String => "string",
+            TokenType::Number => "number",
+            TokenType::If => "if",
+            TokenType::Nil => "nil",
+            TokenType::Or => "or",
+            TokenType::Print => "print",
+            TokenType::Return => "return",
+            TokenType::Super => "super",
+            TokenType::This => "this",
+            TokenType::True => "true",
+            TokenType::Var => "var",
+            TokenType::While => "while",
+            TokenType::EOF => "EOF",
+        };
+        write!(f, "{:?}", s)
     }
-}
-
-#[derive(Error, Debug)]
-pub enum ScannerError {
-    #[error("Unexpected character: {0} at line {1}")]
-    UnexpectedCharacter(char, usize),
-    #[error("Unterminated string: {0} at line {1}")]
-    UnterminatedString(String, usize),
-    #[error("Unterminated comment at line {0}")]
-    UnterminatedComment(usize),
 }

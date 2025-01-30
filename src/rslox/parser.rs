@@ -1,12 +1,12 @@
 // TODO:
 //  - Add more error types
 //  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
-//
 
 use log::trace;
-use thiserror::Error;
 
 use crate::rslox::scanner;
+
+use super::ParserError;
 
 //
 // Parser
@@ -22,7 +22,7 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, ParserError> {
+    pub fn parse(&mut self) -> Result<Expr, Vec<ParserError>> {
         trace!("Parsing tokens: {:#?}", self.tokens);
         return self.parse_expression();
     }
@@ -138,19 +138,16 @@ impl Parser {
 
         if self.match_token(scanner::TokenType::LeftParen).is_some() {
             let expr = self.parse_expression()?;
-            self.consume(
-                scanner::TokenType::RightParen,
-                "Expected ')' after expression.",
-            )?;
+            self.expect_token(scanner::TokenType::RightParen)?;
             return Ok(Expr::Grouping {
                 expression: Box::new(expr),
             });
         }
 
-        return Err(ParserError::InternalError(format!(
-            "Could not parse token : {} ",
-            self.peek()
-        )));
+        return Err(ParserError::UnexpectedTokenNoExpected(
+            self.peek().token_type,
+            self.peek().line,
+        ));
     }
 
     // Utils
@@ -168,16 +165,16 @@ impl Parser {
         self.tokens[self.current].clone()
     }
 
-    fn consume(
-        &mut self,
-        token_type: scanner::TokenType,
-        message: &str,
-    ) -> Result<(), ParserError> {
+    fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<(), ParserError> {
         if self.peek().token_type == token_type {
             self.advance();
             return Ok(());
         }
-        return Err(ParserError::InternalError(message.to_string()));
+        return Err(ParserError::UnexpectedToken(
+            self.peek().clone().token_type,
+            token_type,
+            self.peek().line,
+        ));
     }
 
     fn match_token(&mut self, token_type: scanner::TokenType) -> Option<scanner::Token> {
@@ -226,14 +223,4 @@ pub enum Expr {
         operator: scanner::Token,
         right: Box<Expr>,
     },
-}
-
-//
-// Error
-//
-
-#[derive(Error, Debug)]
-pub enum ParserError {
-    #[error("Parsing error: {0}")]
-    InternalError(String),
 }
