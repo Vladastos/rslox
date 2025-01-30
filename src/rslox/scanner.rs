@@ -34,6 +34,7 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    column: usize,
 }
 
 impl Scanner {
@@ -44,12 +45,12 @@ impl Scanner {
             start: 0,
             current: 0,
             line: 1,
+            column: 0,
         }
     }
 
     pub fn scan_tokens(&mut self) -> Result<Vec<Token>, ScannerError> {
         let mut tokens: Vec<Token> = Vec::new();
-        let mut had_error = false;
 
         while !self.is_at_end() {
             self.start = self.current;
@@ -57,8 +58,7 @@ impl Scanner {
                 Ok(Some(token)) => tokens.push(token),
                 Ok(None) => {}
                 Err(error) => {
-                    println!("{}", error);
-                    had_error = true;
+                    return Err(error);
                 }
             }
         }
@@ -68,9 +68,10 @@ impl Scanner {
             token_type: TokenType::EOF,
             literal: None,
             line: self.line,
+            column: self.column,
         });
 
-        return if had_error { Err(tokens) } else { Ok(tokens) };
+        return Ok(tokens);
     }
 
     fn scan_token(&mut self) -> Result<Option<Token>, ScannerError> {
@@ -81,60 +82,70 @@ impl Scanner {
                 token_type: TokenType::LeftParen,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             ')' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::RightParen,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '{' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::LeftBrace,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '}' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::RightBrace,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             ',' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Comma,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '.' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Dot,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '-' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Minus,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '+' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Plus,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             ';' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Semicolon,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '*' => Ok(Some(Token {
                 lexeme: c.to_string(),
                 token_type: TokenType::Star,
                 literal: None,
                 line: self.line,
+                column: self.column,
             })),
             '!' => {
                 let token_type = if self.match_char('=') {
@@ -152,6 +163,7 @@ impl Scanner {
                     token_type,
                     literal: None,
                     line: self.line,
+                    column: self.column,
                 }))
             }
             '=' => {
@@ -170,6 +182,7 @@ impl Scanner {
                     token_type,
                     literal: None,
                     line: self.line,
+                    column: self.column,
                 }))
             }
             '<' => {
@@ -188,6 +201,7 @@ impl Scanner {
                     token_type,
                     literal: None,
                     line: self.line,
+                    column: self.column,
                 }))
             }
             '>' => {
@@ -206,6 +220,7 @@ impl Scanner {
                     token_type,
                     literal: None,
                     line: self.line,
+                    column: self.column,
                 }))
             }
             '/' => {
@@ -223,14 +238,12 @@ impl Scanner {
                         token_type: TokenType::Slash,
                         literal: None,
                         line: self.line,
+                        column: self.column,
                     }))
                 }
             }
             ' ' | '\r' | '\t' => Ok(None),
-            '\n' => {
-                self.line += 1;
-                Ok(None)
-            }
+            '\n' => Ok(None),
             '"' => {
                 let lexeme = self.scan_string()?;
                 Ok(Some(Token {
@@ -238,6 +251,7 @@ impl Scanner {
                     token_type: TokenType::String,
                     literal: Option::from(lexeme),
                     line: self.line,
+                    column: self.column,
                 }))
             }
             '0'..='9' => {
@@ -247,6 +261,7 @@ impl Scanner {
                     token_type: TokenType::Number,
                     literal: Option::from(lexeme),
                     line: self.line,
+                    column: self.column,
                 }))
             }
             'a'..='z' | 'A'..='Z' | '_' => {
@@ -260,6 +275,7 @@ impl Scanner {
                     token_type,
                     literal: Option::from(lexeme),
                     line: self.line,
+                    column: self.column,
                 }))
             }
             _ => {
@@ -270,9 +286,6 @@ impl Scanner {
 
     fn scan_multi_line_comment(&mut self) -> Result<Option<Token>, ScannerError> {
         while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
-            if self.peek() == '\n' {
-                self.line += 1;
-            }
             self.advance();
         }
         if self.is_at_end() {
@@ -294,13 +307,10 @@ impl Scanner {
     fn scan_string(&mut self) -> Result<String, ScannerError> {
         let mut result = String::new();
         while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' {
-                self.line += 1;
-            }
             result.push(self.advance());
         }
         if self.is_at_end() {
-            return Err(ScannerError::UnterminatedString(result, self.line));
+            return Err(ScannerError::UnterminatedString(self.line));
         }
         self.advance();
         return Ok(result);
@@ -327,7 +337,7 @@ impl Scanner {
         if self.source.chars().nth(self.current).unwrap() != c {
             return false;
         }
-        self.current += 1;
+        self.advance();
         return true;
     }
 
@@ -349,8 +359,16 @@ impl Scanner {
     }
 
     fn advance(&mut self) -> char {
+        if self.is_at_end() {
+            return '\0';
+        }
         let c = self.source.chars().nth(self.current).unwrap();
         self.current += 1;
+        self.column += 1;
+        if c == '\n' {
+            self.line += 1;
+            self.column = 0;
+        }
         return c;
     }
 
@@ -366,6 +384,7 @@ pub struct Token {
     pub literal: Option<String>,
     pub token_type: TokenType,
     pub line: usize,
+    pub column: usize,
 }
 
 impl std::fmt::Display for Token {

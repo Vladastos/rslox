@@ -22,9 +22,47 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
-    pub fn parse(&mut self) -> Result<Expr, Vec<ParserError>> {
-        trace!("Parsing tokens: {:#?}", self.tokens);
-        return self.parse_expression();
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParserError>> {
+        let mut statements: Vec<Stmt> = Vec::new();
+        let mut errors: Vec<ParserError> = Vec::new();
+        loop {
+            if self.is_at_end() {
+                break;
+            }
+            match self.parse_statement() {
+                Ok(stmt) => statements.push(stmt),
+                Err(error) => {
+                    errors.push(error);
+                    self.synchronize();
+                }
+            }
+        }
+        return if errors.len() > 0 {
+            Err(errors)
+        } else {
+            Ok(statements)
+        };
+    }
+
+    fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
+        let result = match self.peek().token_type {
+            scanner::TokenType::Print => self.parse_print_statement(),
+            _ => self.parse_expression_statement(),
+        };
+        self.expect_token(scanner::TokenType::Semicolon)?;
+        return result;
+    }
+
+    fn parse_expression_statement(&mut self) -> Result<Stmt, ParserError> {
+        return Ok(Stmt::Expression {
+            expression: self.parse_expression()?,
+        });
+    }
+
+    fn parse_print_statement(&mut self) -> Result<Stmt, ParserError> {
+        return Ok(Stmt::Print {
+            expression: self.parse_expression()?,
+        });
     }
 
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
@@ -147,18 +185,23 @@ impl Parser {
         return Err(ParserError::UnexpectedTokenNoExpected(
             self.peek().token_type,
             self.peek().line,
+            self.peek().column,
         ));
     }
 
     // Utils
 
-    fn advance(&mut self) -> scanner::Token {
+    fn advance(&mut self) -> Option<scanner::Token> {
         self.current += 1;
-        self.tokens[self.current - 1].clone()
+        return if self.is_at_end() {
+            None
+        } else {
+            Some(self.tokens[self.current - 1].clone())
+        };
     }
 
     fn is_at_end(&self) -> bool {
-        self.current >= self.tokens.len()
+        self.current >= self.tokens.len() - 1
     }
 
     fn peek(&self) -> scanner::Token {
@@ -174,6 +217,7 @@ impl Parser {
             self.peek().clone().token_type,
             token_type,
             self.peek().line,
+            self.peek().column,
         ));
     }
 
@@ -195,11 +239,44 @@ impl Parser {
         }
         for token_type in tokens {
             if self.peek().token_type == token_type {
-                return Some(self.advance());
+                return self.advance();
             }
         }
         return None;
     }
+
+    fn synchronize(&mut self) {
+        // TODO: Fix synchronize when the error is unexpected semicolon (should just skip the semicolon)
+        self.advance();
+        while !self.is_at_end() {
+            if self.peek().token_type == scanner::TokenType::Semicolon {
+                self.advance();
+                return;
+            }
+            match self.peek().token_type {
+                scanner::TokenType::Class
+                | scanner::TokenType::Fun
+                | scanner::TokenType::Var
+                | scanner::TokenType::For
+                | scanner::TokenType::If
+                | scanner::TokenType::While
+                | scanner::TokenType::Print
+                | scanner::TokenType::Return => return,
+                _ => {}
+            }
+            self.advance();
+        }
+    }
+}
+
+//
+// Statement
+//
+
+#[derive(Debug, Clone)]
+pub enum Stmt {
+    Expression { expression: Expr },
+    Print { expression: Expr },
 }
 
 //

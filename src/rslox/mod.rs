@@ -36,9 +36,7 @@ impl Lox {
             let read_result = std::io::stdin().read_line(&mut line);
 
             if read_result.is_err() {
-                return Err(LoxError::RuntimeError(format!(
-                    "Could not read from stdin"
-                )));
+                return Err(LoxError::RuntimeError(format!("Could not read from stdin")));
             }
 
             // Check for EOF
@@ -56,14 +54,13 @@ impl Lox {
     }
 
     fn run(&mut self, source: &str) -> Result<(), LoxError> {
-        
         // Scan the source code into tokens
         debug!("Scanning source code");
         let tokens = scanner::Scanner::new(source).scan_tokens()?;
 
         // Parse the tokens
         let parse_result = parser::Parser::new(tokens).parse()?;
-        debug!("Parsed expression: {:#?}", parse_result);
+        debug!("Parsed statements: {:#?}", parse_result);
 
         return Ok(());
     }
@@ -73,7 +70,7 @@ impl Lox {
 // Errors
 //
 
-#[derive(Debug,)]
+#[derive(Debug)]
 pub enum LoxError {
     FileError(String),
     ScanningError(ScannerError),
@@ -85,48 +82,45 @@ impl std::fmt::Display for LoxError {
         match self {
             LoxError::FileError(path) => write!(f, "Error: Could not open file: {}", path),
             LoxError::ScanningError(errors) => {
-                write!(f, "Syntax error: Encountered the following error during scanning: {:#?}", errors)
+                let error_string: String = errors.to_string();
+                write!(f, "Syntax error: : {}", error_string)
             }
             LoxError::ParsingError(errors) => {
-                write!(f, "Syntax error: {:#?}", errors)
+                let errors_string: String =
+                    errors.into_iter().map(|e| format!("\t{} \n", e)).collect();
+                write!(f, "Syntax error:\n{}", errors_string)
             }
             LoxError::RuntimeError(message) => write!(f, "Runtime error: {}", message),
-            
         }
     }
-    
 }
 
 impl From<Vec<ParserError>> for LoxError {
     fn from(errors: Vec<ParserError>) -> Self {
         LoxError::ParsingError(errors)
     }
-    
 }
 
 impl From<ScannerError> for LoxError {
     fn from(error: ScannerError) -> Self {
         LoxError::ScanningError(error)
     }
-    
 }
-
 
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("Unexpected token: {0} expected: {1} [line {2}]")]
-    UnexpectedToken(TokenType, TokenType, usize),
-    #[error("Unexpected token: {0} [line {1}]")]
-    UnexpectedTokenNoExpected(TokenType, usize),
+    #[error("Unexpected token: {0} expected: {1} [line {2} column {3}]")]
+    UnexpectedToken(TokenType, TokenType, usize, usize),
+    #[error("Unexpected token: {0} [line {1} column {2}]")]
+    UnexpectedTokenNoExpected(TokenType, usize, usize),
 }
 
 #[derive(Error, Debug)]
 pub enum ScannerError {
     #[error("Unexpected character: {0} at line {1}")]
     UnexpectedCharacter(char, usize),
-    #[error("Unterminated string: {0} at line {1}")]
-    UnterminatedString(String, usize),
+    #[error("Unterminated string: at line {0}")]
+    UnterminatedString(usize),
     #[error("Unterminated comment at line {0}")]
     UnterminatedComment(usize),
-
 }
