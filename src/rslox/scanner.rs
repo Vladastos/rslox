@@ -373,6 +373,17 @@ impl Scanner {
     }
 }
 
+/// ## Some nitpicking on `Token`
+///
+/// Token contains `String`. It's almost surely better to use `Token<'a>` and then
+/// store a `&'a str`, referring to a `String` somewhere else. This will make
+/// the code **way** faster, with `Token` being `Copy`. It will also make the
+/// code **WAY** more complex, DO NOT do it, it's a premature optimization.
+///
+/// What is more interesting is the `literal` field. It make sense only when `token_type`
+/// has a specific value. It will probably be better to make it a field of the actual variants
+/// it has sense for, making the illegal state unrepresentable and probably also making `Token`
+/// smaller.
 #[derive(Debug, Clone)]
 pub struct Token {
     pub lexeme: String,
