@@ -2,29 +2,28 @@ mod interpreter;
 mod parser;
 mod scanner;
 
-use std::io::Write;
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use log::{debug, error};
 use scanner::TokenType;
 use thiserror::Error;
 
-//
-// Lox
-//
+/// Lox
 
-pub struct Lox {}
+pub struct Lox;
 
 impl Lox {
     pub fn new() -> Lox {
-        Lox {}
+        Lox
     }
-    pub fn run_file(&mut self, filepath: &str) -> Result<(), LoxError> {
-        let source_result = std::fs::read_to_string(filepath);
-
-        if source_result.is_err() {
-            return Err(LoxError::FileError(filepath.to_string()));
-        }
-        let source = source_result.unwrap();
+    pub fn run_file(&mut self, path: &Path) -> Result<(), LoxError> {
+        let source = std::fs::read_to_string(path).map_err(|source| LoxError::FileError {
+            path: path.to_owned(),
+            source,
+        })?;
 
         self.run(&source)?;
         Ok(())
@@ -35,11 +34,7 @@ impl Lox {
             let mut line = String::new();
             print!("> ");
             std::io::stdout().flush().unwrap();
-            let read_result = std::io::stdin().read_line(&mut line);
-
-            if read_result.is_err() {
-                return Err(LoxError::IoError(read_result.unwrap_err()));
-            }
+            std::io::stdin().read_line(&mut line)?;
 
             // Check for EOF
             if line.trim().is_empty() {
@@ -67,42 +62,41 @@ impl Lox {
         // Run the statements
         interpreter::Interpreter::new().run(&parse_result)?;
 
-        return Ok(());
+        Ok(())
     }
 }
 
-//
-// Errors
-//
+/// Errors
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LoxError {
-    FileError(String),
-    ScanningError(ScannerError),
+    #[error("Could not open file {}", path.display())]
+    FileError {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("Syntax error")]
+    ScanningError(
+        #[source]
+        #[from]
+        ScannerError,
+    ),
+    // this is an horrible way to solve the problem of multiple sources
+    #[error("Syntax error: {}", _0.iter().map(|e| format!("\t{e} \n")).collect::<String>())]
     ParsingError(Vec<ParserError>),
-    RuntimeError(InterpreterError),
-    IoError(std::io::Error),
-}
-impl std::fmt::Display for LoxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LoxError::FileError(path) => write!(f, "Error: Could not open file: {}", path),
-            LoxError::ScanningError(error) => {
-                write!(f, "Syntax error: : {}", error.to_string())
-            }
-            LoxError::ParsingError(errors) => {
-                let errors_string: String =
-                    errors.into_iter().map(|e| format!("\t{} \n", e)).collect();
-                write!(f, "Syntax error:\n{}", errors_string)
-            }
-            LoxError::RuntimeError(message) => {
-                write!(f, "Runtime error: {}", message.to_string())
-            }
-            LoxError::IoError(error) => {
-                write!(f, "IO error: {}", error.to_string())
-            }
-        }
-    }
+    #[error("Runtime error")]
+    RuntimeError(
+        #[source]
+        #[from]
+        InterpreterError,
+    ),
+    #[error("IO error")]
+    IoError(
+        #[source]
+        #[from]
+        std::io::Error,
+    ),
 }
 
 impl From<Vec<ParserError>> for LoxError {
@@ -111,24 +105,21 @@ impl From<Vec<ParserError>> for LoxError {
     }
 }
 
-impl From<ScannerError> for LoxError {
-    fn from(error: ScannerError) -> Self {
-        LoxError::ScanningError(error)
-    }
-}
-
-impl From<InterpreterError> for LoxError {
-    fn from(error: InterpreterError) -> Self {
-        LoxError::RuntimeError(error)
-    }
-}
-
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("Unexpected token: {0} expected: {1} [line {2} column {3}]")]
-    UnexpectedToken(TokenType, TokenType, usize, usize),
-    #[error("Unexpected token: {0} [line {1} column {2}]")]
-    UnexpectedTokenNoExpected(TokenType, usize, usize),
+    #[error("Unexpected token: {found} expected: {expected} [line {line} column {column}]")]
+    UnexpectedToken {
+        found: TokenType,
+        expected: TokenType,
+        line: usize,
+        column: usize,
+    },
+    #[error("Unexpected token: {token_type} [line {line} column {column}]")]
+    UnexpectedTokenNoExpected {
+        token_type: TokenType,
+        line: usize,
+        column: usize,
+    },
 }
 
 #[derive(Error, Debug)]
@@ -143,6 +134,6 @@ pub enum ScannerError {
 
 #[derive(Error, Debug)]
 pub enum InterpreterError {
-    #[error("{0}")]
-    RuntimeError(String),
+    #[error("Operands must be numbers")]
+    OperandsMustBeNumbers,
 }

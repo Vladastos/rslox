@@ -2,30 +2,27 @@ use super::InterpreterError;
 use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
 
-pub struct Interpreter {}
+pub struct Interpreter;
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        Interpreter {}
+        Interpreter
     }
 
-    pub fn run(&self, statements: &Vec<parser::Stmt>) -> Result<(), InterpreterError> {
+    pub fn run(&self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
         for statement in statements {
-            let res = self.interpret_statement(statement);
-            if res.is_err() {
-                return res;
-            }
+            self.interpret_statement(statement)?
         }
         Ok(())
     }
 
     fn interpret_statement(&self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
         match statement {
-            Stmt::Expression { .. } => return Ok(()),
+            Stmt::Expression { .. } => Ok(()),
             Stmt::Print { expression } => {
                 let value = self.interpret_expression(expression);
                 println!("{}", value.unwrap());
-                return Ok(());
+                Ok(())
             }
         }
     }
@@ -51,9 +48,9 @@ impl Interpreter {
         literal: &parser::LoxParserValue,
     ) -> Result<LoxValue, InterpreterError> {
         match literal {
-            parser::LoxParserValue::Number(value) => Ok(LoxValue::Number(value.clone())),
+            parser::LoxParserValue::Number(value) => Ok(LoxValue::Number(*value)),
             parser::LoxParserValue::String(value) => Ok(LoxValue::String(value.clone())),
-            parser::LoxParserValue::Boolean(value) => Ok(LoxValue::Boolean(value.clone())),
+            parser::LoxParserValue::Boolean(value) => Ok(LoxValue::Boolean(*value)),
             parser::LoxParserValue::Nil => Ok(LoxValue::Nil),
         }
     }
@@ -72,36 +69,28 @@ impl Interpreter {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left + right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             parser::LoxBinaryOperator::Minus => {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left - right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             parser::LoxBinaryOperator::Star => {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left * right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             parser::LoxBinaryOperator::Slash => {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left / right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             _ => todo!(),
@@ -127,9 +116,9 @@ enum LoxValue {
 impl std::fmt::Display for LoxValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoxValue::Number(value) => write!(f, "{}", value),
-            LoxValue::String(value) => write!(f, "{}", value),
-            LoxValue::Boolean(value) => write!(f, "{}", value),
+            LoxValue::Number(value) => write!(f, "{value}"),
+            LoxValue::String(value) => write!(f, "{value}"),
+            LoxValue::Boolean(value) => write!(f, "{value}"),
             LoxValue::Nil => write!(f, "nil"),
         }
     }

@@ -1,16 +1,12 @@
-// TODO:
-//  - Add more error types
-//  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
-
-use log::trace;
+//! TODO:
+//!  - Add more error types
+//!  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
 
 use crate::rslox::scanner;
 
-use super::ParserError;
+use super::{scanner::Token, ParserError};
 
-//
-// Parser
-//
+/// Parser
 
 pub struct Parser {
     tokens: Vec<scanner::Token>,
@@ -25,10 +21,7 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParserError>> {
         let mut statements: Vec<Stmt> = Vec::new();
         let mut errors: Vec<ParserError> = Vec::new();
-        loop {
-            if self.is_at_end() {
-                break;
-            }
+        while !self.is_at_end() {
             match self.parse_statement() {
                 Ok(stmt) => statements.push(stmt),
                 Err(error) => {
@@ -37,11 +30,11 @@ impl Parser {
                 }
             }
         }
-        return if errors.len() > 0 {
+        if errors.is_empty() {
             Err(errors)
         } else {
             Ok(statements)
-        };
+        }
     }
 
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
@@ -53,110 +46,111 @@ impl Parser {
             _ => self.parse_expression_statement(),
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
-        return result;
+        result
     }
 
     fn parse_expression_statement(&mut self) -> Result<Stmt, ParserError> {
-        return Ok(Stmt::Expression {
+        Ok(Stmt::Expression {
             expression: self.parse_expression()?,
-        });
+        })
     }
 
     fn parse_print_statement(&mut self) -> Result<Stmt, ParserError> {
-        return Ok(Stmt::Print {
+        Ok(Stmt::Print {
             expression: self.parse_expression()?,
-        });
+        })
     }
 
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
-        return self.parse_equality();
+        self.parse_equality()
     }
 
     fn parse_equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_comparison()?;
-        while let Some(operator) = self.match_tokens(vec![
+        while let Some(operator) = self.match_tokens(&[
             scanner::TokenType::BangEqual,
             scanner::TokenType::EqualEqual,
         ]) {
             let right = self.parse_comparison()?;
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_term()?;
-        while let Some(operator) = self.match_tokens(vec![
+        while let Some(operator) = self.match_tokens(&[
             scanner::TokenType::Greater,
             scanner::TokenType::GreaterEqual,
             scanner::TokenType::Less,
             scanner::TokenType::LessEqual,
         ]) {
             let right = self.parse_term().unwrap();
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_factor()?;
         while let Some(operator) =
-            self.match_tokens(vec![scanner::TokenType::Plus, scanner::TokenType::Minus])
+            self.match_tokens(&[scanner::TokenType::Plus, scanner::TokenType::Minus])
         {
             let right = self.parse_factor()?;
 
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_unary()?;
         while let Some(operator) =
-            self.match_tokens(vec![scanner::TokenType::Star, scanner::TokenType::Slash])
+            self.match_tokens(&[scanner::TokenType::Star, scanner::TokenType::Slash])
         {
             let right = self.parse_unary()?;
 
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_unary(&mut self) -> Result<Expr, ParserError> {
         if let Some(operator) =
-            self.match_tokens(vec![scanner::TokenType::Bang, scanner::TokenType::Minus])
+            self.match_tokens(&[scanner::TokenType::Bang, scanner::TokenType::Minus])
         {
             let right = self.parse_unary()?;
 
-            let operator: Result<LoxUnaryOperator, ParserError> = operator.into();
+            let operator = LoxUnaryOperator::try_from(operator)?;
+
             return Ok(Expr::Unary {
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             });
         }
-        return self.parse_primary();
+        self.parse_primary()
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
@@ -194,30 +188,36 @@ impl Parser {
             });
         }
 
-        return Err(ParserError::UnexpectedTokenNoExpected(
-            self.peek().token_type,
-            self.peek().line,
-            self.peek().column,
-        ));
+        let &Token {
+            token_type,
+            line,
+            column,
+            ..
+        } = self.peek();
+        Err(ParserError::UnexpectedTokenNoExpected {
+            token_type,
+            line,
+            column,
+        })
     }
 
     // Utils
 
     fn advance(&mut self) -> Option<scanner::Token> {
         self.current += 1;
-        return if self.is_at_end() {
+        if self.is_at_end() {
             None
         } else {
             Some(self.tokens[self.current - 1].clone())
-        };
+        }
     }
 
     fn is_at_end(&self) -> bool {
         self.current >= self.tokens.len() - 1
     }
 
-    fn peek(&self) -> scanner::Token {
-        self.tokens[self.current].clone()
+    fn peek(&self) -> &scanner::Token {
+        &self.tokens[self.current]
     }
 
     fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<(), ParserError> {
@@ -225,12 +225,18 @@ impl Parser {
             self.advance();
             return Ok(());
         }
-        return Err(ParserError::UnexpectedToken(
-            self.peek().clone().token_type,
-            token_type,
-            self.peek().line,
-            self.peek().column,
-        ));
+        let &scanner::Token {
+            token_type: found,
+            line,
+            column,
+            ..
+        } = self.peek();
+        Err(ParserError::UnexpectedToken {
+            found,
+            expected: token_type,
+            line,
+            column,
+        })
     }
 
     fn match_token(&mut self, token_type: scanner::TokenType) -> Option<scanner::Token> {
@@ -242,19 +248,20 @@ impl Parser {
         }
         let token = self.peek().clone();
         self.advance();
-        return Some(token);
+        Some(token)
     }
 
-    fn match_tokens(&mut self, tokens: Vec<scanner::TokenType>) -> Option<scanner::Token> {
+    // The name of this function is unclear. `match_any_token` maybe? At least a good doc comment to explain the function is in order
+    fn match_tokens(&mut self, tokens: &[scanner::TokenType]) -> Option<scanner::Token> {
         if self.is_at_end() {
             return None;
         }
         for token_type in tokens {
-            if self.peek().token_type == token_type {
+            if &self.peek().token_type == token_type {
                 return self.advance();
             }
         }
-        return None;
+        None
     }
 
     fn synchronize(&mut self) {
@@ -282,9 +289,7 @@ impl Parser {
     }
 }
 
-//
-// Statement
-//
+/// Statement
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -292,9 +297,7 @@ pub enum Stmt {
     Print { expression: Expr },
 }
 
-//
-// Expression
-//
+/// Expression
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -323,7 +326,7 @@ pub enum LoxParserValue {
     Nil,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoxBinaryOperator {
     Plus,
     Minus,
@@ -337,8 +340,9 @@ pub enum LoxBinaryOperator {
     LessEqual,
 }
 
-impl From<scanner::Token> for Result<LoxBinaryOperator, ParserError> {
-    fn from(value: scanner::Token) -> Self {
+impl TryFrom<scanner::Token> for LoxBinaryOperator {
+    type Error = ParserError;
+    fn try_from(value: scanner::Token) -> Result<Self, ParserError> {
         match value.token_type {
             scanner::TokenType::Plus => Ok(LoxBinaryOperator::Plus),
             scanner::TokenType::Minus => Ok(LoxBinaryOperator::Minus),
@@ -350,31 +354,32 @@ impl From<scanner::Token> for Result<LoxBinaryOperator, ParserError> {
             scanner::TokenType::GreaterEqual => Ok(LoxBinaryOperator::GreaterEqual),
             scanner::TokenType::Less => Ok(LoxBinaryOperator::Less),
             scanner::TokenType::LessEqual => Ok(LoxBinaryOperator::LessEqual),
-            _ => Err(ParserError::UnexpectedTokenNoExpected(
-                value.token_type,
-                value.line,
-                value.column,
-            )),
+            _ => Err(ParserError::UnexpectedTokenNoExpected {
+                token_type: value.token_type,
+                line: value.line,
+                column: value.column,
+            }),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoxUnaryOperator {
     Minus,
     Bang,
 }
 
-impl From<scanner::Token> for Result<LoxUnaryOperator, ParserError> {
-    fn from(value: scanner::Token) -> Self {
+impl TryFrom<scanner::Token> for LoxUnaryOperator {
+    type Error = ParserError;
+    fn try_from(value: scanner::Token) -> Result<Self, ParserError> {
         match value.token_type {
             scanner::TokenType::Minus => Ok(LoxUnaryOperator::Minus),
             scanner::TokenType::Bang => Ok(LoxUnaryOperator::Bang),
-            _ => Err(ParserError::UnexpectedTokenNoExpected(
-                value.token_type,
-                value.line,
-                value.column,
-            )),
+            _ => Err(ParserError::UnexpectedTokenNoExpected {
+                token_type: value.token_type,
+                line: value.line,
+                column: value.column,
+            }),
         }
     }
 }
