@@ -194,9 +194,11 @@ impl Parser {
             column,
             ..
         } = self.peek();
-        Err(ParserError::UnexpectedTokenNoExpected(
-            token_type, line, column,
-        ))
+        Err(ParserError::UnexpectedTokenNoExpected {
+            token_type,
+            line,
+            column,
+        })
     }
 
     // Utils
@@ -223,12 +225,18 @@ impl Parser {
             self.advance();
             return Ok(());
         }
-        Err(ParserError::UnexpectedToken(
-            self.peek().token_type,
-            token_type,
-            self.peek().line,
-            self.peek().column,
-        ))
+        let &scanner::Token {
+            token_type: found,
+            line,
+            column,
+            ..
+        } = self.peek();
+        Err(ParserError::UnexpectedToken {
+            found,
+            expected: token_type,
+            line,
+            column,
+        })
     }
 
     fn match_token(&mut self, token_type: scanner::TokenType) -> Option<scanner::Token> {
@@ -346,11 +354,11 @@ impl TryFrom<scanner::Token> for LoxBinaryOperator {
             scanner::TokenType::GreaterEqual => Ok(LoxBinaryOperator::GreaterEqual),
             scanner::TokenType::Less => Ok(LoxBinaryOperator::Less),
             scanner::TokenType::LessEqual => Ok(LoxBinaryOperator::LessEqual),
-            _ => Err(ParserError::UnexpectedTokenNoExpected(
-                value.token_type,
-                value.line,
-                value.column,
-            )),
+            _ => Err(ParserError::UnexpectedTokenNoExpected {
+                token_type: value.token_type,
+                line: value.line,
+                column: value.column,
+            }),
         }
     }
 }
@@ -367,11 +375,11 @@ impl TryFrom<scanner::Token> for LoxUnaryOperator {
         match value.token_type {
             scanner::TokenType::Minus => Ok(LoxUnaryOperator::Minus),
             scanner::TokenType::Bang => Ok(LoxUnaryOperator::Bang),
-            _ => Err(ParserError::UnexpectedTokenNoExpected(
-                value.token_type,
-                value.line,
-                value.column,
-            )),
+            _ => Err(ParserError::UnexpectedTokenNoExpected {
+                token_type: value.token_type,
+                line: value.line,
+                column: value.column,
+            }),
         }
     }
 }

@@ -104,10 +104,19 @@ impl From<Vec<ParserError>> for LoxError {
 
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("Unexpected token: {0} expected: {1} [line {2} column {3}]")]
-    UnexpectedToken(TokenType, TokenType, usize, usize),
-    #[error("Unexpected token: {0} [line {1} column {2}]")]
-    UnexpectedTokenNoExpected(TokenType, usize, usize),
+    #[error("Unexpected token: {found} expected: {expected} [line {line} column {column}]")]
+    UnexpectedToken {
+        found: TokenType,
+        expected: TokenType,
+        line: usize,
+        column: usize,
+    },
+    #[error("Unexpected token: {token_type} [line {line} column {column}]")]
+    UnexpectedTokenNoExpected {
+        token_type: TokenType,
+        line: usize,
+        column: usize,
+    },
 }
 
 #[derive(Error, Debug)]
