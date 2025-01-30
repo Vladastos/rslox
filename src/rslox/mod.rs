@@ -2,7 +2,10 @@ mod interpreter;
 mod parser;
 mod scanner;
 
-use std::io::Write;
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use log::{debug, error};
 use scanner::TokenType;
@@ -16,9 +19,9 @@ impl Lox {
     pub fn new() -> Lox {
         Lox
     }
-    pub fn run_file(&mut self, filepath: &str) -> Result<(), LoxError> {
-        let source = std::fs::read_to_string(filepath).map_err(|source| LoxError::FileError {
-            path: filepath.to_owned(),
+    pub fn run_file(&mut self, path: &Path) -> Result<(), LoxError> {
+        let source = std::fs::read_to_string(path).map_err(|source| LoxError::FileError {
+            path: path.to_owned(),
             source,
         })?;
 
@@ -67,9 +70,9 @@ impl Lox {
 
 #[derive(Debug, Error)]
 pub enum LoxError {
-    #[error("Could not open file {path}")]
+    #[error("Could not open file {}", path.display())]
     FileError {
-        path: String,
+        path: PathBuf,
         #[source]
         source: std::io::Error,
     },
