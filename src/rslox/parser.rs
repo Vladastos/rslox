@@ -239,6 +239,7 @@ impl Parser {
         Some(token)
     }
 
+    // The name of this function is unclear. `match_any_token` maybe? At least a good doc comment to explain the function is in order
     fn match_tokens(&mut self, tokens: &[scanner::TokenType]) -> Option<scanner::Token> {
         if self.is_at_end() {
             return None;
