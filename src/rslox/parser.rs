@@ -1,6 +1,6 @@
-// TODO:
-//  - Add more error types
-//  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
+//! TODO:
+//!  - Add more error types
+//!  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
 
 use log::trace;
 
@@ -8,9 +8,7 @@ use crate::rslox::scanner;
 
 use super::ParserError;
 
-//
-// Parser
-//
+/// Parser
 
 pub struct Parser {
     tokens: Vec<scanner::Token>,
@@ -282,9 +280,7 @@ impl Parser {
     }
 }
 
-//
-// Statement
-//
+/// Statement
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -292,9 +288,7 @@ pub enum Stmt {
     Print { expression: Expr },
 }
 
-//
-// Expression
-//
+/// Expression
 
 #[derive(Debug, Clone)]
 pub enum Expr {

@@ -8,9 +8,7 @@ use log::{debug, error};
 use scanner::TokenType;
 use thiserror::Error;
 
-//
-// Lox
-//
+/// Lox
 
 pub struct Lox;
 
@@ -71,9 +69,7 @@ impl Lox {
     }
 }
 
-//
-// Errors
-//
+/// Errors
 
 #[derive(Debug)]
 pub enum LoxError {

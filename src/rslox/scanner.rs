@@ -24,9 +24,7 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
     ])
 });
 
-//
-// Scanner
-//
+/// Scanner
 
 pub struct Scanner {
     source: String,
