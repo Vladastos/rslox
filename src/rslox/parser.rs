@@ -210,8 +210,8 @@ impl Parser {
         self.current >= self.tokens.len() - 1
     }
 
-    fn peek(&self) -> scanner::Token {
-        self.tokens[self.current].clone()
+    fn peek(&self) -> &scanner::Token {
+        &self.tokens[self.current]
     }
 
     fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<(), ParserError> {
@@ -220,7 +220,7 @@ impl Parser {
             return Ok(());
         }
         Err(ParserError::UnexpectedToken(
-            self.peek().clone().token_type,
+            self.peek().token_type,
             token_type,
             self.peek().line,
             self.peek().column,
