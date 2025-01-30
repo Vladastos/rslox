@@ -48,9 +48,9 @@ impl Interpreter {
         literal: &parser::LoxParserValue,
     ) -> Result<LoxValue, InterpreterError> {
         match literal {
-            parser::LoxParserValue::Number(value) => Ok(LoxValue::Number(value.clone())),
+            parser::LoxParserValue::Number(value) => Ok(LoxValue::Number(*value)),
             parser::LoxParserValue::String(value) => Ok(LoxValue::String(value.clone())),
-            parser::LoxParserValue::Boolean(value) => Ok(LoxValue::Boolean(value.clone())),
+            parser::LoxParserValue::Boolean(value) => Ok(LoxValue::Boolean(*value)),
             parser::LoxParserValue::Nil => Ok(LoxValue::Nil),
         }
     }
