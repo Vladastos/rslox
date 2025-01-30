@@ -69,36 +69,28 @@ impl Interpreter {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left + right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             parser::LoxBinaryOperator::Minus => {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left - right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             parser::LoxBinaryOperator::Star => {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left * right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             parser::LoxBinaryOperator::Slash => {
                 if let (LoxValue::Number(left), LoxValue::Number(right)) = (left, right) {
                     Ok(LoxValue::Number(left / right))
                 } else {
-                    Err(InterpreterError::RuntimeError(
-                        "Operands must be numbers".to_string(),
-                    ))
+                    Err(InterpreterError::OperandsMustBeNumbers)
                 }
             }
             _ => todo!(),

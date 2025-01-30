@@ -131,6 +131,6 @@ pub enum ScannerError {
 
 #[derive(Error, Debug)]
 pub enum InterpreterError {
-    #[error("{0}")]
-    RuntimeError(String),
+    #[error("Operands must be numbers")]
+    OperandsMustBeNumbers,
 }
