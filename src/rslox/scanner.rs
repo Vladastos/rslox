@@ -69,7 +69,7 @@ impl Scanner {
             column: self.column,
         });
 
-        return Ok(tokens);
+        Ok(tokens)
     }
 
     fn scan_token(&mut self) -> Result<Option<Token>, ScannerError> {
@@ -276,9 +276,7 @@ impl Scanner {
                     column: self.column,
                 }))
             }
-            _ => {
-                return Err(ScannerError::UnexpectedCharacter(c, self.line));
-            }
+            _ => Err(ScannerError::UnexpectedCharacter(c, self.line)),
         }
     }
 
@@ -311,7 +309,7 @@ impl Scanner {
             return Err(ScannerError::UnterminatedString(self.line));
         }
         self.advance();
-        return Ok(result);
+        Ok(result)
     }
 
     fn scan_number(&mut self) -> Result<String, ScannerError> {
@@ -325,7 +323,7 @@ impl Scanner {
                 result.push(self.advance());
             }
         }
-        return Ok(result);
+        Ok(result)
     }
 
     fn match_char(&mut self, c: char) -> bool {
@@ -336,14 +334,14 @@ impl Scanner {
             return false;
         }
         self.advance();
-        return true;
+        true
     }
 
     fn peek(&mut self) -> char {
         if self.is_at_end() {
             return '\0';
         }
-        return self.source.chars().nth(self.current).unwrap();
+        self.source.chars().nth(self.current).unwrap()
     }
 
     fn peek_next(&mut self) -> char {
@@ -353,7 +351,7 @@ impl Scanner {
         if self.current + 1 >= self.source_length {
             return '\0';
         }
-        return self.source.chars().nth(self.current + 1).unwrap();
+        self.source.chars().nth(self.current + 1).unwrap()
     }
 
     fn advance(&mut self) -> char {
@@ -367,12 +365,11 @@ impl Scanner {
             self.line += 1;
             self.column = 0;
         }
-        return c;
+        c
     }
 
     fn is_at_end(&self) -> bool {
-        let is_at_end = self.current >= self.source_length;
-        return is_at_end;
+        self.current >= self.source_length
     }
 }
 

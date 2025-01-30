@@ -65,7 +65,7 @@ impl Lox {
         // Run the statements
         interpreter::Interpreter::new().run(&parse_result)?;
 
-        return Ok(());
+        Ok(())
     }
 }
 

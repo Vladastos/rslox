@@ -18,11 +18,11 @@ impl Interpreter {
 
     fn interpret_statement(&self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
         match statement {
-            Stmt::Expression { .. } => return Ok(()),
+            Stmt::Expression { .. } => Ok(()),
             Stmt::Print { expression } => {
                 let value = self.interpret_expression(expression);
                 println!("{}", value.unwrap());
-                return Ok(());
+                Ok(())
             }
         }
     }

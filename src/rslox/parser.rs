@@ -2,8 +2,6 @@
 //!  - Add more error types
 //!  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
 
-use log::trace;
-
 use crate::rslox::scanner;
 
 use super::ParserError;
@@ -35,11 +33,11 @@ impl Parser {
                 }
             }
         }
-        return if errors.len() > 0 {
+        if errors.len() > 0 {
             Err(errors)
         } else {
             Ok(statements)
-        };
+        }
     }
 
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
@@ -51,23 +49,23 @@ impl Parser {
             _ => self.parse_expression_statement(),
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
-        return result;
+        result
     }
 
     fn parse_expression_statement(&mut self) -> Result<Stmt, ParserError> {
-        return Ok(Stmt::Expression {
+        Ok(Stmt::Expression {
             expression: self.parse_expression()?,
-        });
+        })
     }
 
     fn parse_print_statement(&mut self) -> Result<Stmt, ParserError> {
-        return Ok(Stmt::Print {
+        Ok(Stmt::Print {
             expression: self.parse_expression()?,
-        });
+        })
     }
 
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
-        return self.parse_equality();
+        self.parse_equality()
     }
 
     fn parse_equality(&mut self) -> Result<Expr, ParserError> {
@@ -84,7 +82,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_comparison(&mut self) -> Result<Expr, ParserError> {
@@ -103,7 +101,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_term(&mut self) -> Result<Expr, ParserError> {
@@ -121,7 +119,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_factor(&mut self) -> Result<Expr, ParserError> {
@@ -139,7 +137,7 @@ impl Parser {
                 right: Box::new(right),
             };
         }
-        return Ok(expr);
+        Ok(expr)
     }
 
     fn parse_unary(&mut self) -> Result<Expr, ParserError> {
@@ -154,7 +152,7 @@ impl Parser {
                 right: Box::new(right),
             });
         }
-        return self.parse_primary();
+        self.parse_primary()
     }
 
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
@@ -192,22 +190,22 @@ impl Parser {
             });
         }
 
-        return Err(ParserError::UnexpectedTokenNoExpected(
+        Err(ParserError::UnexpectedTokenNoExpected(
             self.peek().token_type,
             self.peek().line,
             self.peek().column,
-        ));
+        ))
     }
 
     // Utils
 
     fn advance(&mut self) -> Option<scanner::Token> {
         self.current += 1;
-        return if self.is_at_end() {
+        if self.is_at_end() {
             None
         } else {
             Some(self.tokens[self.current - 1].clone())
-        };
+        }
     }
 
     fn is_at_end(&self) -> bool {
@@ -223,12 +221,12 @@ impl Parser {
             self.advance();
             return Ok(());
         }
-        return Err(ParserError::UnexpectedToken(
+        Err(ParserError::UnexpectedToken(
             self.peek().clone().token_type,
             token_type,
             self.peek().line,
             self.peek().column,
-        ));
+        ))
     }
 
     fn match_token(&mut self, token_type: scanner::TokenType) -> Option<scanner::Token> {
@@ -240,7 +238,7 @@ impl Parser {
         }
         let token = self.peek().clone();
         self.advance();
-        return Some(token);
+        Some(token)
     }
 
     fn match_tokens(&mut self, tokens: Vec<scanner::TokenType>) -> Option<scanner::Token> {
@@ -252,7 +250,7 @@ impl Parser {
                 return self.advance();
             }
         }
-        return None;
+        None
     }
 
     fn synchronize(&mut self) {
