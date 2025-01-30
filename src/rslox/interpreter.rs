@@ -2,11 +2,11 @@ use super::InterpreterError;
 use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
 
-pub struct Interpreter {}
+pub struct Interpreter;
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        Interpreter {}
+        Interpreter
     }
 
     pub fn run(&self, statements: &Vec<parser::Stmt>) -> Result<(), InterpreterError> {

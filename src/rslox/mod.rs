@@ -12,11 +12,11 @@ use thiserror::Error;
 // Lox
 //
 
-pub struct Lox {}
+pub struct Lox;
 
 impl Lox {
     pub fn new() -> Lox {
-        Lox {}
+        Lox
     }
     pub fn run_file(&mut self, filepath: &str) -> Result<(), LoxError> {
         let source_result = std::fs::read_to_string(filepath);
