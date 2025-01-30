@@ -72,10 +72,10 @@ impl Parser {
             scanner::TokenType::EqualEqual,
         ]) {
             let right = self.parse_comparison()?;
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
@@ -91,10 +91,10 @@ impl Parser {
             scanner::TokenType::LessEqual,
         ]) {
             let right = self.parse_term().unwrap();
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
@@ -108,11 +108,11 @@ impl Parser {
         {
             let right = self.parse_factor()?;
 
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
@@ -126,11 +126,11 @@ impl Parser {
         {
             let right = self.parse_unary()?;
 
-            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+            let operator = LoxBinaryOperator::try_from(operator)?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             };
         }
@@ -143,9 +143,10 @@ impl Parser {
         {
             let right = self.parse_unary()?;
 
-            let operator: Result<LoxUnaryOperator, ParserError> = operator.into();
+            let operator = LoxUnaryOperator::try_from(operator)?;
+
             return Ok(Expr::Unary {
-                operator: operator?,
+                operator,
                 right: Box::new(right),
             });
         }
@@ -312,7 +313,7 @@ pub enum LoxParserValue {
     Nil,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoxBinaryOperator {
     Plus,
     Minus,
@@ -326,8 +327,9 @@ pub enum LoxBinaryOperator {
     LessEqual,
 }
 
-impl From<scanner::Token> for Result<LoxBinaryOperator, ParserError> {
-    fn from(value: scanner::Token) -> Self {
+impl TryFrom<scanner::Token> for LoxBinaryOperator {
+    type Error = ParserError;
+    fn try_from(value: scanner::Token) -> Result<Self, ParserError> {
         match value.token_type {
             scanner::TokenType::Plus => Ok(LoxBinaryOperator::Plus),
             scanner::TokenType::Minus => Ok(LoxBinaryOperator::Minus),
@@ -348,14 +350,15 @@ impl From<scanner::Token> for Result<LoxBinaryOperator, ParserError> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum LoxUnaryOperator {
     Minus,
     Bang,
 }
 
-impl From<scanner::Token> for Result<LoxUnaryOperator, ParserError> {
-    fn from(value: scanner::Token) -> Self {
+impl TryFrom<scanner::Token> for LoxUnaryOperator {
+    type Error = ParserError;
+    fn try_from(value: scanner::Token) -> Result<Self, ParserError> {
         match value.token_type {
             scanner::TokenType::Minus => Ok(LoxUnaryOperator::Minus),
             scanner::TokenType::Bang => Ok(LoxUnaryOperator::Bang),
