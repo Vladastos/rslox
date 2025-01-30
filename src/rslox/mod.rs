@@ -71,51 +71,36 @@ impl Lox {
 
 /// Errors
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum LoxError {
+    #[error("Could not open file {_0}")]
     FileError(String),
-    ScanningError(ScannerError),
+    #[error("Syntax error")]
+    ScanningError(
+        #[source]
+        #[from]
+        ScannerError,
+    ),
+    // this is an horrible way to solve the problem of multiple sources
+    #[error("Syntax error: {}", _0.into_iter().map(|e| format!("\t{} \n", e)).collect::<String>())]
     ParsingError(Vec<ParserError>),
-    RuntimeError(InterpreterError),
-    IoError(std::io::Error),
-}
-impl std::fmt::Display for LoxError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LoxError::FileError(path) => write!(f, "Error: Could not open file: {}", path),
-            LoxError::ScanningError(error) => {
-                write!(f, "Syntax error: : {}", error)
-            }
-            LoxError::ParsingError(errors) => {
-                let errors_string: String =
-                    errors.into_iter().map(|e| format!("\t{} \n", e)).collect();
-                write!(f, "Syntax error:\n{}", errors_string)
-            }
-            LoxError::RuntimeError(message) => {
-                write!(f, "Runtime error: {}", message)
-            }
-            LoxError::IoError(error) => {
-                write!(f, "IO error: {}", error)
-            }
-        }
-    }
+    #[error("Runtime error")]
+    RuntimeError(
+        #[source]
+        #[from]
+        InterpreterError,
+    ),
+    #[error("IO error")]
+    IoError(
+        #[source]
+        #[from]
+        std::io::Error,
+    ),
 }
 
 impl From<Vec<ParserError>> for LoxError {
     fn from(errors: Vec<ParserError>) -> Self {
         LoxError::ParsingError(errors)
-    }
-}
-
-impl From<ScannerError> for LoxError {
-    fn from(error: ScannerError) -> Self {
-        LoxError::ScanningError(error)
-    }
-}
-
-impl From<InterpreterError> for LoxError {
-    fn from(error: InterpreterError) -> Self {
-        LoxError::RuntimeError(error)
     }
 }
 
