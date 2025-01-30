@@ -11,10 +11,7 @@ impl Interpreter {
 
     pub fn run(&self, statements: &Vec<parser::Stmt>) -> Result<(), InterpreterError> {
         for statement in statements {
-            let res = self.interpret_statement(statement);
-            if res.is_err() {
-                return res;
-            }
+            self.interpret_statement(statement)?
         }
         Ok(())
     }
