@@ -9,7 +9,7 @@ impl Interpreter {
         Interpreter
     }
 
-    pub fn run(&self, statements: &Vec<parser::Stmt>) -> Result<(), InterpreterError> {
+    pub fn run(&self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
         for statement in statements {
             self.interpret_statement(statement)?
         }
