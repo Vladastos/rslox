@@ -1,8 +1,10 @@
+mod interpreter;
 mod parser;
 mod scanner;
+
 use std::io::Write;
 
-use log::{debug, error, info};
+use log::{debug, error};
 use scanner::TokenType;
 use thiserror::Error;
 
@@ -36,7 +38,7 @@ impl Lox {
             let read_result = std::io::stdin().read_line(&mut line);
 
             if read_result.is_err() {
-                return Err(LoxError::RuntimeError(format!("Could not read from stdin")));
+                return Err(LoxError::IoError(read_result.unwrap_err()));
             }
 
             // Check for EOF
@@ -62,6 +64,9 @@ impl Lox {
         let parse_result = parser::Parser::new(tokens).parse()?;
         debug!("Parsed statements: {:#?}", parse_result);
 
+        // Run the statements
+        interpreter::Interpreter::new().run(&parse_result)?;
+
         return Ok(());
     }
 }
@@ -75,22 +80,27 @@ pub enum LoxError {
     FileError(String),
     ScanningError(ScannerError),
     ParsingError(Vec<ParserError>),
-    RuntimeError(String),
+    RuntimeError(InterpreterError),
+    IoError(std::io::Error),
 }
 impl std::fmt::Display for LoxError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LoxError::FileError(path) => write!(f, "Error: Could not open file: {}", path),
-            LoxError::ScanningError(errors) => {
-                let error_string: String = errors.to_string();
-                write!(f, "Syntax error: : {}", error_string)
+            LoxError::ScanningError(error) => {
+                write!(f, "Syntax error: : {}", error.to_string())
             }
             LoxError::ParsingError(errors) => {
                 let errors_string: String =
                     errors.into_iter().map(|e| format!("\t{} \n", e)).collect();
                 write!(f, "Syntax error:\n{}", errors_string)
             }
-            LoxError::RuntimeError(message) => write!(f, "Runtime error: {}", message),
+            LoxError::RuntimeError(message) => {
+                write!(f, "Runtime error: {}", message.to_string())
+            }
+            LoxError::IoError(error) => {
+                write!(f, "IO error: {}", error.to_string())
+            }
         }
     }
 }
@@ -104,6 +114,12 @@ impl From<Vec<ParserError>> for LoxError {
 impl From<ScannerError> for LoxError {
     fn from(error: ScannerError) -> Self {
         LoxError::ScanningError(error)
+    }
+}
+
+impl From<InterpreterError> for LoxError {
+    fn from(error: InterpreterError) -> Self {
+        LoxError::RuntimeError(error)
     }
 }
 
@@ -123,4 +139,10 @@ pub enum ScannerError {
     UnterminatedString(usize),
     #[error("Unterminated comment at line {0}")]
     UnterminatedComment(usize),
+}
+
+#[derive(Error, Debug)]
+pub enum InterpreterError {
+    #[error("{0}")]
+    RuntimeError(String),
 }

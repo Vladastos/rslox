@@ -46,7 +46,10 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
-            scanner::TokenType::Print => self.parse_print_statement(),
+            scanner::TokenType::Print => {
+                self.advance();
+                self.parse_print_statement()
+            }
             _ => self.parse_expression_statement(),
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
@@ -76,9 +79,10 @@ impl Parser {
             scanner::TokenType::EqualEqual,
         ]) {
             let right = self.parse_comparison()?;
+            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator,
+                operator: operator?,
                 right: Box::new(right),
             };
         }
@@ -94,9 +98,10 @@ impl Parser {
             scanner::TokenType::LessEqual,
         ]) {
             let right = self.parse_term().unwrap();
+            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator,
+                operator: operator?,
                 right: Box::new(right),
             };
         }
@@ -109,9 +114,12 @@ impl Parser {
             self.match_tokens(vec![scanner::TokenType::Plus, scanner::TokenType::Minus])
         {
             let right = self.parse_factor()?;
+
+            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator,
+                operator: operator?,
                 right: Box::new(right),
             };
         }
@@ -124,9 +132,12 @@ impl Parser {
             self.match_tokens(vec![scanner::TokenType::Star, scanner::TokenType::Slash])
         {
             let right = self.parse_unary()?;
+
+            let operator: Result<LoxBinaryOperator, ParserError> = operator.into();
+
             expr = Expr::Binary {
                 left: Box::new(expr),
-                operator,
+                operator: operator?,
                 right: Box::new(right),
             };
         }
@@ -139,8 +150,9 @@ impl Parser {
         {
             let right = self.parse_unary()?;
 
+            let operator: Result<LoxUnaryOperator, ParserError> = operator.into();
             return Ok(Expr::Unary {
-                operator,
+                operator: operator?,
                 right: Box::new(right),
             });
         }
@@ -150,27 +162,27 @@ impl Parser {
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
         if self.match_token(scanner::TokenType::False).is_some() {
             return Ok(Expr::Literal {
-                value: String::from("false"),
+                value: LoxParserValue::Boolean(false),
             });
         }
         if self.match_token(scanner::TokenType::True).is_some() {
             return Ok(Expr::Literal {
-                value: String::from("true"),
+                value: LoxParserValue::Boolean(true),
             });
         }
         if self.match_token(scanner::TokenType::Nil).is_some() {
             return Ok(Expr::Literal {
-                value: String::from("nil"),
+                value: LoxParserValue::Nil,
             });
         }
         if let Some(token) = self.match_token(scanner::TokenType::Number) {
             return Ok(Expr::Literal {
-                value: token.literal.unwrap(),
+                value: LoxParserValue::Number(token.literal.unwrap().parse().unwrap()),
             });
         }
         if let Some(token) = self.match_token(scanner::TokenType::String) {
             return Ok(Expr::Literal {
-                value: token.literal.unwrap(),
+                value: LoxParserValue::String(token.literal.unwrap()),
             });
         }
 
@@ -247,6 +259,7 @@ impl Parser {
 
     fn synchronize(&mut self) {
         // TODO: Fix synchronize when the error is unexpected semicolon (should just skip the semicolon)
+
         self.advance();
         while !self.is_at_end() {
             if self.peek().token_type == scanner::TokenType::Semicolon {
@@ -287,17 +300,81 @@ pub enum Stmt {
 pub enum Expr {
     Binary {
         left: Box<Expr>,
-        operator: scanner::Token,
+        operator: LoxBinaryOperator,
         right: Box<Expr>,
     },
     Grouping {
         expression: Box<Expr>,
     },
     Literal {
-        value: String,
+        value: LoxParserValue,
     },
     Unary {
-        operator: scanner::Token,
+        operator: LoxUnaryOperator,
         right: Box<Expr>,
     },
+}
+
+#[derive(Debug, Clone)]
+pub enum LoxParserValue {
+    Number(f64),
+    String(String),
+    Boolean(bool),
+    Nil,
+}
+
+#[derive(Debug, Clone)]
+pub enum LoxBinaryOperator {
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    EqualEqual,
+    BangEqual,
+    Greater,
+    GreaterEqual,
+    Less,
+    LessEqual,
+}
+
+impl From<scanner::Token> for Result<LoxBinaryOperator, ParserError> {
+    fn from(value: scanner::Token) -> Self {
+        match value.token_type {
+            scanner::TokenType::Plus => Ok(LoxBinaryOperator::Plus),
+            scanner::TokenType::Minus => Ok(LoxBinaryOperator::Minus),
+            scanner::TokenType::Star => Ok(LoxBinaryOperator::Star),
+            scanner::TokenType::Slash => Ok(LoxBinaryOperator::Slash),
+            scanner::TokenType::EqualEqual => Ok(LoxBinaryOperator::EqualEqual),
+            scanner::TokenType::BangEqual => Ok(LoxBinaryOperator::BangEqual),
+            scanner::TokenType::Greater => Ok(LoxBinaryOperator::Greater),
+            scanner::TokenType::GreaterEqual => Ok(LoxBinaryOperator::GreaterEqual),
+            scanner::TokenType::Less => Ok(LoxBinaryOperator::Less),
+            scanner::TokenType::LessEqual => Ok(LoxBinaryOperator::LessEqual),
+            _ => Err(ParserError::UnexpectedTokenNoExpected(
+                value.token_type,
+                value.line,
+                value.column,
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum LoxUnaryOperator {
+    Minus,
+    Bang,
+}
+
+impl From<scanner::Token> for Result<LoxUnaryOperator, ParserError> {
+    fn from(value: scanner::Token) -> Self {
+        match value.token_type {
+            scanner::TokenType::Minus => Ok(LoxUnaryOperator::Minus),
+            scanner::TokenType::Bang => Ok(LoxUnaryOperator::Bang),
+            _ => Err(ParserError::UnexpectedTokenNoExpected(
+                value.token_type,
+                value.line,
+                value.column,
+            )),
+        }
+    }
 }
