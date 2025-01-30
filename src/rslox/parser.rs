@@ -21,10 +21,7 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParserError>> {
         let mut statements: Vec<Stmt> = Vec::new();
         let mut errors: Vec<ParserError> = Vec::new();
-        loop {
-            if self.is_at_end() {
-                break;
-            }
+        while !self.is_at_end() {
             match self.parse_statement() {
                 Ok(stmt) => statements.push(stmt),
                 Err(error) => {
@@ -33,7 +30,7 @@ impl Parser {
                 }
             }
         }
-        if errors.len() > 0 {
+        if errors.is_empty() {
             Err(errors)
         } else {
             Ok(statements)
