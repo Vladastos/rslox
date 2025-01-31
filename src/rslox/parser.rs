@@ -1,6 +1,6 @@
 //! TODO:
 //!  - Add more error types
-//!  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
+//!  - Improve error messages
 
 use ordered_float::OrderedFloat;
 

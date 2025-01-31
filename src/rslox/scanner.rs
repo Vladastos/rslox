@@ -1,5 +1,6 @@
 //! TODO:
 //! - Fix character sequences starting with a number wrongly being scanned as an identifier
+//! - Make the String and Number tokens hold the value of the string/number
 
 use std::collections::hash_map::HashMap;
 use std::sync::LazyLock;
@@ -27,7 +28,8 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
     ])
 });
 
-/// Scanner
+/// Scanner for the Lox programming language.
+/// This is a simple scanner that reads characters from the source string and returns tokens.
 
 pub struct Scanner {
     source: String,
@@ -50,6 +52,9 @@ impl Scanner {
         }
     }
 
+    /// Scans all tokens in the source string and returns a vector of all tokens.
+    /// The final token in the vector will always be an EOF token.
+    /// If any errors occur during scanning, returns a `ScannerError`.
     pub fn scan_tokens(&mut self) -> Result<Vec<Token>, ScannerError> {
         let mut tokens: Vec<Token> = Vec::new();
 
@@ -75,6 +80,10 @@ impl Scanner {
         Ok(tokens)
     }
 
+    /// Scans a single token from the source string and returns it.
+    /// If an error occurs while scanning, returns the error.
+    /// If the end of the source string is reached, returns `None`.
+    /// The returned token is guaranteed to be valid.
     fn scan_token(&mut self) -> Result<Option<Token>, ScannerError> {
         let c = self.advance();
         match c {
@@ -309,6 +318,15 @@ impl Scanner {
         }
     }
 
+    /// Scans a multi-line comment from the source string.
+    ///
+    /// This function advances through the characters of a multi-line comment,
+    /// starting with `/*` and ending with `*/`. It stops at the closing `*/`
+    /// or when the end of the source is reached. If the comment is unterminated,
+    /// it returns a `ScannerError::UnterminatedComment`.
+    ///
+    /// Returns `Ok(None)` if the comment is successfully scanned, otherwise
+    /// returns a `ScannerError`.
     fn scan_multi_line_comment(&mut self) -> Result<Option<Token>, ScannerError> {
         while self.peek() != '*' && self.peek_next() != '/' && !self.is_at_end() {
             self.advance();
@@ -321,6 +339,16 @@ impl Scanner {
         Ok(None)
     }
 
+    /// Scans an identifier from the source string.
+    ///
+    /// This function advances through the characters of an identifier,
+    /// starting with the given character `c`. It stops at the end of the
+    /// identifier, which is defined as when the next character is not a
+    /// letter, number, or underscore, or when the end of the source is
+    /// reached.
+    ///
+    /// Returns `Ok(identifier)` if the identifier is successfully scanned,
+    /// otherwise returns a `ScannerError`.
     fn scan_identifier(&mut self, c: char) -> Result<String, ScannerError> {
         let mut result = String::from(c);
         while self.peek().is_ascii_alphanumeric() || self.peek() == '_' {
@@ -329,6 +357,13 @@ impl Scanner {
         Ok(result)
     }
 
+    /// Scans a string literal from the source string.
+    ///
+    /// This function advances through the characters of a string, starting with a double quote (`"`)
+    /// and ending with a double quote. It stops at the closing double quote or when the end of the
+    /// source is reached. If the string is unterminated, it returns a `ScannerError::UnterminatedString`.
+    ///
+    /// Returns `Ok(string)` containing the scanned string if successful, otherwise returns a `ScannerError`.
     fn scan_string(&mut self) -> Result<String, ScannerError> {
         let mut result = String::new();
         while self.peek() != '"' && !self.is_at_end() {
@@ -341,6 +376,15 @@ impl Scanner {
         Ok(result)
     }
 
+    /// Scans a number literal from the source string.
+    ///
+    /// This function advances through the characters of a number, starting with the current position
+    /// and ending with the next non-digit or non-'.' character. It stops at the next non-digit or
+    /// non-'.' character or when the end of the source is reached.
+    ///
+    /// If the number is a decimal number, it also scans the decimal part of the number.
+    ///
+    /// Returns `Ok(string)` containing the scanned number if successful, otherwise returns a `ScannerError`.
     fn scan_number(&mut self) -> Result<String, ScannerError> {
         let mut result = String::from(self.source.chars().nth(self.start).unwrap().to_string());
         while self.peek().is_ascii_digit() {
@@ -355,6 +399,10 @@ impl Scanner {
         Ok(result)
     }
 
+    // ## Helpers
+
+    /// Checks if the current character matches the given character, and if so, advances the scanner.
+    /// Returns `true` if the characters match, otherwise `false`.
     fn match_char(&mut self, c: char) -> bool {
         if self.is_at_end() {
             return false;
@@ -366,6 +414,8 @@ impl Scanner {
         true
     }
 
+    /// Returns the character at the current position of the scanner without advancing it.
+    /// If the scanner is at the end of the source, returns `'\0'`.
     fn peek(&mut self) -> char {
         if self.is_at_end() {
             return '\0';
@@ -373,6 +423,8 @@ impl Scanner {
         self.source.chars().nth(self.current).unwrap()
     }
 
+    /// Returns the character at the next position of the scanner without advancing it.
+    /// If the scanner is at the end of the source, returns `'\0'`.
     fn peek_next(&mut self) -> char {
         if self.is_at_end() {
             return '\0';
@@ -383,6 +435,11 @@ impl Scanner {
         self.source.chars().nth(self.current + 1).unwrap()
     }
 
+    /// Advances the scanner to the next character in the source string and returns it.
+    /// If the scanner is at the end of the source, returns `'\0'`.
+    ///
+    /// Also increments the `column` field and resets it to `0` if the character is a newline.
+    /// Increments the `line` field if the character is a newline.
     fn advance(&mut self) -> char {
         if self.is_at_end() {
             return '\0';
@@ -397,6 +454,7 @@ impl Scanner {
         c
     }
 
+    /// Self-explanatory
     fn is_at_end(&self) -> bool {
         self.current >= self.source_length
     }
