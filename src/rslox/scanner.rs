@@ -1,3 +1,6 @@
+//! TODO:
+//! - Fix character sequences starting with a number wrongly being scanned as an identifier
+
 use std::collections::hash_map::HashMap;
 use std::sync::LazyLock;
 
@@ -276,6 +279,32 @@ impl Scanner {
                     column: self.column,
                 }))
             }
+            '|' => {
+                if self.match_char('|') {
+                    Ok(Some(Token {
+                        lexeme: "||".to_string(),
+                        token_type: TokenType::Or,
+                        literal: None,
+                        line: self.line,
+                        column: self.column,
+                    }))
+                } else {
+                    Err(ScannerError::UnexpectedCharacter(c, self.line))
+                }
+            }
+            '&' => {
+                if self.match_char('&') {
+                    Ok(Some(Token {
+                        lexeme: "&&".to_string(),
+                        token_type: TokenType::And,
+                        literal: None,
+                        line: self.line,
+                        column: self.column,
+                    }))
+                } else {
+                    Err(ScannerError::UnexpectedCharacter(c, self.line))
+                }
+            }
             _ => Err(ScannerError::UnexpectedCharacter(c, self.line)),
         }
     }
@@ -451,7 +480,7 @@ impl std::fmt::Display for TokenType {
             TokenType::RightBrace => "}",
             TokenType::Comma => ",",
             TokenType::Dot => ".",
-            TokenType::And => "and",
+            TokenType::And => "&&",
             TokenType::Class => "class",
             TokenType::Else => "else",
             TokenType::False => "false",
@@ -475,7 +504,7 @@ impl std::fmt::Display for TokenType {
             TokenType::Number => "number",
             TokenType::If => "if",
             TokenType::Nil => "nil",
-            TokenType::Or => "or",
+            TokenType::Or => "||",
             TokenType::Print => "print",
             TokenType::Return => "return",
             TokenType::Super => "super",

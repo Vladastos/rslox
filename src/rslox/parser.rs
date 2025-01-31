@@ -2,6 +2,8 @@
 //!  - Add more error types
 //!  - Implement error recovery (Synchronization) - https://craftinginterpreters.com/parsing-expressions.html#panic-mode-error-recovery
 
+use ordered_float::OrderedFloat;
+
 use crate::rslox::scanner;
 
 use super::{scanner::Token, ParserError};
@@ -30,7 +32,7 @@ impl Parser {
                 }
             }
         }
-        if errors.is_empty() {
+        if !errors.is_empty() {
             Err(errors)
         } else {
             Ok(statements)
@@ -39,35 +41,71 @@ impl Parser {
 
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
-            scanner::TokenType::Print => {
-                self.advance();
-                self.parse_print_statement()
-            }
+            scanner::TokenType::Print => self.parse_print_statement(),
             _ => self.parse_expression_statement(),
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
         result
     }
 
+    /// Parses an expression statement.
+    ///
+    /// This function parses an expression and constructs a `Stmt::Expression` node containing the parsed expression.
+    /// Returns an error if the expression cannot be parsed.
     fn parse_expression_statement(&mut self) -> Result<Stmt, ParserError> {
         Ok(Stmt::Expression {
             expression: self.parse_expression()?,
         })
     }
 
+    /// Parses a print statement.
+    ///
+    /// This function assumes that the current token is a 'print' keyword and
+    /// advances the token stream. It then parses the following expression
+    /// and constructs a `Stmt::Print` node containing the parsed expression.
+    ///
+    /// Returns an error if the expression cannot be parsed.
     fn parse_print_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
         Ok(Stmt::Print {
             expression: self.parse_expression()?,
         })
     }
 
+    /// Parses an expression.
+    ///
+    /// This is the entry point for parsing an expression. It will parse a logical expression.
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
-        self.parse_equality()
+        self.parse_logical()
     }
 
+    fn parse_logical(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.parse_equality()?;
+        while let Some(operator) =
+            self.match_any_token(&[scanner::TokenType::Or, scanner::TokenType::And])
+        {
+            let right = self.parse_equality()?;
+            let operator = LoxBinaryOperator::try_from(operator)?;
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
+    }
+
+    /// Parses an equality expression.
+    ///
+    /// This handles equality and inequality operations by first parsing a comparison expression.
+    /// Then, it checks for any equality operators, and recursively parses
+    /// the right-hand side as another comparison expression. The result is a binary expression node
+    /// representing the equality.
+    ///
+    /// If no equality operator is found, returns the result of the comparison expression.
     fn parse_equality(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_comparison()?;
-        while let Some(operator) = self.match_tokens(&[
+        while let Some(operator) = self.match_any_token(&[
             scanner::TokenType::BangEqual,
             scanner::TokenType::EqualEqual,
         ]) {
@@ -82,9 +120,17 @@ impl Parser {
         Ok(expr)
     }
 
+    /// Parses a comparison expression.
+    ///
+    /// This handles comparison operations by first parsing a term expression.
+    /// Then, it checks for any comparison operators, and recursively parses
+    /// the right-hand side as another term expression. The result is a binary expression node
+    /// representing the comparison.
+    ///
+    /// If no comparison operator is found, returns the result of the term expression.
     fn parse_comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_term()?;
-        while let Some(operator) = self.match_tokens(&[
+        while let Some(operator) = self.match_any_token(&[
             scanner::TokenType::Greater,
             scanner::TokenType::GreaterEqual,
             scanner::TokenType::Less,
@@ -101,10 +147,18 @@ impl Parser {
         Ok(expr)
     }
 
+    /// Parses a term expression.
+    ///
+    /// This handles addition and subtraction operations by first parsing a factor expression.
+    /// Then, it checks for any addition or subtraction operators, and recursively parses
+    /// the right-hand side as another factor expression. The result is a binary expression node
+    /// representing the term.
+    ///
+    /// If no addition or subtraction operator is found, returns the result of the factor expression.
     fn parse_term(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_factor()?;
         while let Some(operator) =
-            self.match_tokens(&[scanner::TokenType::Plus, scanner::TokenType::Minus])
+            self.match_any_token(&[scanner::TokenType::Plus, scanner::TokenType::Minus])
         {
             let right = self.parse_factor()?;
 
@@ -119,10 +173,18 @@ impl Parser {
         Ok(expr)
     }
 
+    /// Parses a factor expression.
+    ///
+    /// This handles multiplication and division operations by first parsing a unary expression.
+    /// Then, it checks for any multiplication or division operators, and recursively parses
+    /// the right-hand side as another unary expression. The result is a binary expression node
+    /// representing the factor.
+    ///
+    /// If no multiplication or division operator is found, returns the result of the unary expression.
     fn parse_factor(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_unary()?;
         while let Some(operator) =
-            self.match_tokens(&[scanner::TokenType::Star, scanner::TokenType::Slash])
+            self.match_any_token(&[scanner::TokenType::Star, scanner::TokenType::Slash])
         {
             let right = self.parse_unary()?;
 
@@ -137,9 +199,18 @@ impl Parser {
         Ok(expr)
     }
 
+    /// Parses a unary expression.
+    ///
+    /// This is either a negation prefix (e.g. `-1`), or a primary expression.
+    ///
+    /// If the current token is not a negation prefix, returns the result of parsing a primary
+    /// expression.
+    ///
+    /// If the current token is a negation prefix, it is consumed and the right operand is
+    /// recursively parsed.
     fn parse_unary(&mut self) -> Result<Expr, ParserError> {
         if let Some(operator) =
-            self.match_tokens(&[scanner::TokenType::Bang, scanner::TokenType::Minus])
+            self.match_any_token(&[scanner::TokenType::Bang, scanner::TokenType::Minus])
         {
             let right = self.parse_unary()?;
 
@@ -153,6 +224,12 @@ impl Parser {
         self.parse_primary()
     }
 
+    /// Parses a primary expression.
+    ///
+    /// This is either a literal value (false, true, nil, a number, or a string), or a grouping
+    /// expression, which is a parenthesized expression.
+    ///
+    /// If the current token is not a primary expression, returns an `UnexpectedTokenNoExpected` error.
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
         if self.match_token(scanner::TokenType::False).is_some() {
             return Ok(Expr::Literal {
@@ -203,6 +280,8 @@ impl Parser {
 
     // Utils
 
+    /// Consumes the current token.
+    /// Returns None if the parser is at the end of the tokens.
     fn advance(&mut self) -> Option<scanner::Token> {
         self.current += 1;
         if self.is_at_end() {
@@ -220,6 +299,8 @@ impl Parser {
         &self.tokens[self.current]
     }
 
+    /// Consumes the current token if it matches the given `token_type`.
+    /// Returns an error if the current token does not match the given `token_type`.
     fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<(), ParserError> {
         if self.peek().token_type == token_type {
             self.advance();
@@ -239,6 +320,8 @@ impl Parser {
         })
     }
 
+    /// If the current token matches the given `token_type`, returns the matched token and consumes
+    /// it. Otherwise, returns `None`.
     fn match_token(&mut self, token_type: scanner::TokenType) -> Option<scanner::Token> {
         if self.is_at_end() {
             return None;
@@ -251,8 +334,9 @@ impl Parser {
         Some(token)
     }
 
-    // The name of this function is unclear. `match_any_token` maybe? At least a good doc comment to explain the function is in order
-    fn match_tokens(&mut self, tokens: &[scanner::TokenType]) -> Option<scanner::Token> {
+    /// If the current token matches any of the given `token_type`s, returns the matched token and
+    /// consumes it. Otherwise, returns `None`.
+    fn match_any_token(&mut self, tokens: &[scanner::TokenType]) -> Option<scanner::Token> {
         if self.is_at_end() {
             return None;
         }
@@ -264,6 +348,11 @@ impl Parser {
         None
     }
 
+    /// Consumes tokens until it reaches the start of the next statement, or the end of the file.
+    /// Used to recover from a parse error.
+    ///
+    /// The list of "statement start" tokens is based on the Lox language definition.
+    ///
     fn synchronize(&mut self) {
         // TODO: Fix synchronize when the error is unexpected semicolon (should just skip the semicolon)
 
@@ -320,7 +409,7 @@ pub enum Expr {
 
 #[derive(Debug, Clone)]
 pub enum LoxParserValue {
-    Number(f64),
+    Number(OrderedFloat<f64>),
     String(String),
     Boolean(bool),
     Nil,
@@ -338,6 +427,8 @@ pub enum LoxBinaryOperator {
     GreaterEqual,
     Less,
     LessEqual,
+    And,
+    Or,
 }
 
 impl TryFrom<scanner::Token> for LoxBinaryOperator {
@@ -354,6 +445,8 @@ impl TryFrom<scanner::Token> for LoxBinaryOperator {
             scanner::TokenType::GreaterEqual => Ok(LoxBinaryOperator::GreaterEqual),
             scanner::TokenType::Less => Ok(LoxBinaryOperator::Less),
             scanner::TokenType::LessEqual => Ok(LoxBinaryOperator::LessEqual),
+            scanner::TokenType::And => Ok(LoxBinaryOperator::And),
+            scanner::TokenType::Or => Ok(LoxBinaryOperator::Or),
             _ => Err(ParserError::UnexpectedTokenNoExpected {
                 token_type: value.token_type,
                 line: value.line,

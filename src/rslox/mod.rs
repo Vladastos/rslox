@@ -1,6 +1,7 @@
 mod interpreter;
 mod parser;
 mod scanner;
+mod tests;
 
 use std::{
     io::Write,
@@ -76,8 +77,8 @@ pub enum LoxError {
         #[source]
         source: std::io::Error,
     },
-    #[error("Syntax error")]
-    ScanningError(
+    #[error("Syntax error: {}", _0)]
+    ScannerError(
         #[source]
         #[from]
         ScannerError,
@@ -126,7 +127,7 @@ pub enum ParserError {
 pub enum ScannerError {
     #[error("Unexpected character: {0} at line {1}")]
     UnexpectedCharacter(char, usize),
-    #[error("Unterminated string: at line {0}")]
+    #[error("Unterminated string at line {0}")]
     UnterminatedString(usize),
     #[error("Unterminated comment at line {0}")]
     UnterminatedComment(usize),
@@ -136,4 +137,8 @@ pub enum ScannerError {
 pub enum InterpreterError {
     #[error("Operands must be numbers")]
     OperandsMustBeNumbers,
+    #[error("Operand must be a number")]
+    OperandMustBeNumber,
+    #[error("Operands do not match")]
+    OperandsDoNotMatch,
 }

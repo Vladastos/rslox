@@ -4,12 +4,15 @@ run: build
 	./target/release/$(shell cat Cargo.toml | grep name | cut -d \" -f 2)
 
 test: build
-	bash scripts/run-tests.sh
+	cargo test
 
-build: format
+build: fmt
 	cargo build --release
 
-format:
+fmt:
 	cargo fmt
 
-.PHONY: build run format
+lint:
+	cargo clippy
+
+.PHONY: build run format test lint
