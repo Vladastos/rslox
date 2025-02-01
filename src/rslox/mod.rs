@@ -8,9 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use interpreter::LoxValue;
 use log::{debug, error};
-use parser::LoxParserValue;
 use scanner::TokenType;
 use thiserror::Error;
 
@@ -39,7 +37,7 @@ impl Lox {
             std::io::stdout().flush().unwrap();
             std::io::stdin().read_line(&mut line)?;
 
-            // Check for EOF
+            // Check for Eof
             if line.trim().is_empty() {
                 break;
             }
@@ -142,8 +140,4 @@ pub enum InterpreterError {
         found: String,
         expected: &'static str,
     },
-    #[error("Operand must be a number")]
-    OperandMustBeNumber,
-    #[error("Operands do not match")]
-    OperandsDoNotMatch,
 }

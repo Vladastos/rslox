@@ -96,82 +96,97 @@ impl Interpreter {
                     expected: "number or string",
                 }),
             },
-            parser::LoxBinaryOperator::Minus => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    Ok(LoxValue::Number(left - right))
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+            parser::LoxBinaryOperator::Minus => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Number(left - right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
-            parser::LoxBinaryOperator::Star => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    Ok(LoxValue::Number(left * right))
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
+            parser::LoxBinaryOperator::Star => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Number(left * right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
-            parser::LoxBinaryOperator::Slash => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    // Handle division by zero by returning a nil value
-                    let result = left / right;
-                    if result.is_nan() || result.is_infinite() {
-                        Ok(LoxValue::Nil)
-                    } else {
-                        Ok(LoxValue::Number(result))
-                    }
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
+            parser::LoxBinaryOperator::Slash => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Number(left / right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
-            parser::LoxBinaryOperator::Greater => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    Ok(LoxValue::Boolean(left > right))
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
+            parser::LoxBinaryOperator::Greater => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left > right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
-            parser::LoxBinaryOperator::GreaterEqual => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    Ok(LoxValue::Boolean(left >= right))
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
+            parser::LoxBinaryOperator::GreaterEqual => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left >= right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
-            parser::LoxBinaryOperator::Less => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    Ok(LoxValue::Boolean(left < right))
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
+            parser::LoxBinaryOperator::Less => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left < right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
-            parser::LoxBinaryOperator::LessEqual => {
-                if let (LoxValue::Number(left), LoxValue::Number(right)) = (left.clone(), right) {
-                    Ok(LoxValue::Boolean(left <= right))
-                } else {
-                    Err(InterpreterError::InvalidOperandType {
-                        found: left.name(),
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
+            parser::LoxBinaryOperator::LessEqual => match left {
+                LoxValue::Number(left) => match right {
+                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left <= right)),
+                    _ => Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
                         expected: "number",
-                    })
-                }
-            }
+                    }),
+                },
+                _ => Err(InterpreterError::InvalidOperandType {
+                    found: left.name(),
+                    expected: "number",
+                }),
+            },
             parser::LoxBinaryOperator::BangEqual => Ok(LoxValue::Boolean(left != right)),
             parser::LoxBinaryOperator::EqualEqual => Ok(LoxValue::Boolean(left == right)),
             parser::LoxBinaryOperator::And => {
@@ -199,7 +214,10 @@ impl Interpreter {
                 if let LoxValue::Number(right) = right {
                     Ok(LoxValue::Number(-right))
                 } else {
-                    Err(InterpreterError::OperandMustBeNumber)
+                    Err(InterpreterError::InvalidOperandType {
+                        found: right.name(),
+                        expected: "number",
+                    })
                 }
             }
             parser::LoxUnaryOperator::Bang => Ok(LoxValue::Boolean(!right.is_truthy())),

@@ -53,7 +53,7 @@ impl Scanner {
     }
 
     /// Scans all tokens in the source string and returns a vector of all tokens.
-    /// The final token in the vector will always be an EOF token.
+    /// The final token in the vector will always be an Eof token.
     /// If any errors occur during scanning, returns a `ScannerError`.
     pub fn scan_tokens(&mut self) -> Result<Vec<Token>, ScannerError> {
         let mut tokens: Vec<Token> = Vec::new();
@@ -71,7 +71,7 @@ impl Scanner {
 
         tokens.push(Token {
             lexeme: "".to_string(),
-            token_type: TokenType::EOF,
+            token_type: TokenType::Eof,
             literal: None,
             line: self.line,
             column: self.column,
@@ -386,7 +386,7 @@ impl Scanner {
     ///
     /// Returns `Ok(string)` containing the scanned number if successful, otherwise returns a `ScannerError`.
     fn scan_number(&mut self) -> Result<String, ScannerError> {
-        let mut result = String::from(self.source.chars().nth(self.start).unwrap().to_string());
+        let mut result = self.source.chars().nth(self.start).unwrap().to_string();
         while self.peek().is_ascii_digit() {
             result.push(self.advance());
         }
@@ -526,7 +526,7 @@ pub enum TokenType {
     True,
     Var,
     While,
-    EOF,
+    Eof,
 }
 
 impl std::fmt::Display for TokenType {
@@ -570,7 +570,7 @@ impl std::fmt::Display for TokenType {
             TokenType::True => "true",
             TokenType::Var => "var",
             TokenType::While => "while",
-            TokenType::EOF => "EOF",
+            TokenType::Eof => "Eof",
         };
         write!(f, "{s:?}")
     }
