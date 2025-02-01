@@ -8,7 +8,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use interpreter::LoxValue;
 use log::{debug, error};
+use parser::LoxParserValue;
 use scanner::TokenType;
 use thiserror::Error;
 
@@ -86,7 +88,7 @@ pub enum LoxError {
     // this is an horrible way to solve the problem of multiple sources
     #[error("Syntax error: {}", _0.iter().map(|e| format!("\t{e} \n")).collect::<String>())]
     ParsingError(Vec<ParserError>),
-    #[error("Runtime error")]
+    #[error("Runtime error: {0}")]
     RuntimeError(
         #[source]
         #[from]
@@ -135,8 +137,11 @@ pub enum ScannerError {
 
 #[derive(Error, Debug)]
 pub enum InterpreterError {
-    #[error("Operands must be numbers")]
-    OperandsMustBeNumbers,
+    #[error("Invalid operand type: {found} expected: {expected}")]
+    InvalidOperandType {
+        found: String,
+        expected: &'static str,
+    },
     #[error("Operand must be a number")]
     OperandMustBeNumber,
     #[error("Operands do not match")]
