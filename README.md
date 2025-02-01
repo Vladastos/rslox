@@ -14,3 +14,34 @@ Lox is a small, simple language with a small set of keywords and operators. Its 
 ```bash
 $ cargo run
 ```
+
+## Grammar 
+
+Here is the grammar that is implemented for now by Rslox. It will be updated as more of the language is implemented.
+
+>---
+> **Program** -> Statement* EOF
+>
+>**Statement** -> ExpressionStatement | PrintStatement
+>
+>**ExpressionStatement** -> Expression ;
+>
+>**PrintStatement** -> "print" Expression ;
+>
+>**Expression** -> LogicalExpression
+>
+>**LogicalExpression** -> EqualityExpression ( "||" EqualityExpression | "&&" EqualityExpression )\*
+>
+>**EqualityExpression** -> ComparisonExpression ( ( "!=" | "==" ) ComparisonExpression )\*
+>
+>**ComparisonExpression** -> AdditionExpression ( ( ">" | ">=" | "<" | "<=" ) AdditionExpression )\*
+>
+>**AdditionExpression** -> MultiplicationExpression ( ( "+" | "-" ) MultiplicationExpression )\*
+>
+>**MultiplicationExpression** -> UnaryExpression ( ( "\*" | "/" )UnaryExpression )\*
+>
+>**UnaryExpression** -> ( "!" | "-" ) UnaryExpression | PrimaryExpression
+>
+>**PrimaryExpression** -> *NUMBER* | *STRING* | "true" | "false" | "nil" | "(" Expression ")"
+>
+>---
