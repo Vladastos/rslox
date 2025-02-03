@@ -30,6 +30,7 @@ impl Interpreter {
                 println!("{}", value);
                 Ok(())
             }
+            Stmt::VarDeclaration { name, initializer } => unimplemented!(),
         }
     }
 
@@ -46,6 +47,7 @@ impl Interpreter {
             Expr::Grouping { expression } => self.interpret_expression(expression),
             Expr::Literal { value } => self.interpret_literal(value),
             Expr::Unary { operator, right } => self.interpret_unary(operator, right),
+            Expr::Variable { name } => unimplemented!(),
         }
     }
 

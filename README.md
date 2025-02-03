@@ -20,7 +20,11 @@ $ cargo run
 Here is the grammar that is implemented for now by Rslox. It will be updated as more of the language is implemented.
 
 >---
-> **Program** -> Statement* EOF
+> **Program** -> Declaration\* EOF
+>
+>**Declaration** -> VarDeclaration | Statement
+>
+>**VarDeclaration** -> "var" *IDENTIFIER* ( "=" Expression )? ;
 >
 >**Statement** -> ExpressionStatement | PrintStatement
 >
@@ -40,6 +44,6 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**UnaryExpression** -> ( "!" | "-" ) UnaryExpression | PrimaryExpression
 >
->**PrimaryExpression** -> *NUMBER* | *STRING* | "true" | "false" | "nil" | "(" Expression ")"
+>**PrimaryExpression** -> *NUMBER* | *STRING* | "true" | "false" | "nil" | "(" Expression ")" | *IDENTIFIER*
 >
 >---

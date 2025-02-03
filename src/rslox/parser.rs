@@ -27,7 +27,7 @@ impl Parser {
         let mut statements: Vec<Stmt> = Vec::new();
         let mut errors: Vec<ParserError> = Vec::new();
         while !self.is_at_end() {
-            match self.parse_statement() {
+            match self.parse_declaration() {
                 Ok(stmt) => statements.push(stmt),
                 Err(error) => {
                     errors.push(error);
@@ -42,6 +42,31 @@ impl Parser {
         }
     }
 
+    fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
+        let result = match self.peek().token_type {
+            scanner::TokenType::Var => self.parse_var_declaration(),
+            _ => self.parse_statement(),
+        };
+        self.expect_token(scanner::TokenType::Semicolon)?;
+        result
+    }
+
+    fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
+        self.expect_token(scanner::TokenType::Var)?;
+        let token = self.expect_token(scanner::TokenType::Identifier)?;
+
+        let initializer = if self.peek().token_type == scanner::TokenType::Equal {
+            self.advance();
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
+        Ok(Stmt::VarDeclaration {
+            name: token.lexeme,
+            initializer,
+        })
+    }
+
     /// Parses a statement.
     ///
     /// This is the entry point for parsing a statement. It will parse an expression statement or a print statement.
@@ -50,7 +75,6 @@ impl Parser {
             scanner::TokenType::Print => self.parse_print_statement(),
             _ => self.parse_expression_statement(),
         };
-        self.expect_token(scanner::TokenType::Semicolon)?;
         result
     }
 
@@ -239,6 +263,9 @@ impl Parser {
                 value: LoxParserValue::String(token.literal.unwrap()),
             });
         }
+        if let Some(token) = self.match_token(scanner::TokenType::Identifier) {
+            return Ok(Expr::Variable { name: token.lexeme });
+        }
 
         if self.match_token(scanner::TokenType::LeftParen).is_some() {
             let expr = self.parse_expression()?;
@@ -284,10 +311,10 @@ impl Parser {
 
     /// Consumes the current token if it matches the given `token_type`.
     /// Returns an error if the current token does not match the given `token_type`.
-    fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<(), ParserError> {
+    fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<Token, ParserError> {
         if self.peek().token_type == token_type {
             self.advance();
-            return Ok(());
+            return Ok(self.peek().clone());
         }
         let &scanner::Token {
             token_type: found,
@@ -365,8 +392,16 @@ impl Parser {
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
-    Expression { expression: Expr },
-    Print { expression: Expr },
+    Expression {
+        expression: Expr,
+    },
+    Print {
+        expression: Expr,
+    },
+    VarDeclaration {
+        name: String,
+        initializer: Option<Expr>,
+    },
 }
 
 /// Expression
@@ -387,6 +422,9 @@ pub enum Expr {
     Unary {
         operator: LoxUnaryOperator,
         right: Box<Expr>,
+    },
+    Variable {
+        name: String,
     },
 }
 
