@@ -69,7 +69,10 @@ impl Interpreter {
     ) -> Result<LoxValue, InterpreterError> {
         let left = self.interpret_expression(left)?;
         let right = self.interpret_expression(right)?;
-        debug!("Interpreting binary expression: {} {}", left, right);
+        debug!(
+            "Interpreting binary expression: {} {} {}",
+            left, operator, right
+        );
         // Return nil if one of the operands is nil
         if let (LoxValue::Nil, _) | (_, LoxValue::Nil) = (left.clone(), right.clone()) {
             return Ok(LoxValue::Nil);

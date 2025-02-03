@@ -20,6 +20,9 @@ impl Parser {
         Parser { tokens, current: 0 }
     }
 
+    /// Parses all statements in the source code.
+    ///
+    /// On error, returns a vector of `ParserError`.
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParserError>> {
         let mut statements: Vec<Stmt> = Vec::new();
         let mut errors: Vec<ParserError> = Vec::new();
@@ -39,6 +42,9 @@ impl Parser {
         }
     }
 
+    /// Parses a statement.
+    ///
+    /// This is the entry point for parsing a statement. It will parse an expression statement or a print statement.
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
             scanner::TokenType::Print => self.parse_print_statement(),
@@ -80,35 +86,10 @@ impl Parser {
     }
 
     fn parse_logical(&mut self) -> Result<Expr, ParserError> {
-        let mut expr = self.parse_equality()?;
+        let mut expr = self.parse_comparison()?;
         while let Some(operator) =
             self.match_any_token(&[scanner::TokenType::Or, scanner::TokenType::And])
         {
-            let right = self.parse_equality()?;
-            let operator = LoxBinaryOperator::try_from(operator)?;
-            expr = Expr::Binary {
-                left: Box::new(expr),
-                operator,
-                right: Box::new(right),
-            };
-        }
-        Ok(expr)
-    }
-
-    /// Parses an equality expression.
-    ///
-    /// This handles equality and inequality operations by first parsing a comparison expression.
-    /// Then, it checks for any equality operators, and recursively parses
-    /// the right-hand side as another comparison expression. The result is a binary expression node
-    /// representing the equality.
-    ///
-    /// If no equality operator is found, returns the result of the comparison expression.
-    fn parse_equality(&mut self) -> Result<Expr, ParserError> {
-        let mut expr = self.parse_comparison()?;
-        while let Some(operator) = self.match_any_token(&[
-            scanner::TokenType::BangEqual,
-            scanner::TokenType::EqualEqual,
-        ]) {
             let right = self.parse_comparison()?;
             let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
@@ -130,11 +111,13 @@ impl Parser {
     /// If no comparison operator is found, returns the result of the term expression.
     fn parse_comparison(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_term()?;
-        while let Some(operator) = self.match_any_token(&[
+        if let Some(operator) = self.match_any_token(&[
             scanner::TokenType::Greater,
             scanner::TokenType::GreaterEqual,
             scanner::TokenType::Less,
             scanner::TokenType::LessEqual,
+            scanner::TokenType::BangEqual,
+            scanner::TokenType::EqualEqual,
         ]) {
             let right = self.parse_term().unwrap();
             let operator = LoxBinaryOperator::try_from(operator)?;
@@ -429,6 +412,24 @@ pub enum LoxBinaryOperator {
     LessEqual,
     And,
     Or,
+}
+impl std::fmt::Display for LoxBinaryOperator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoxBinaryOperator::Plus => write!(f, "+"),
+            LoxBinaryOperator::Minus => write!(f, "-"),
+            LoxBinaryOperator::Star => write!(f, "*"),
+            LoxBinaryOperator::Slash => write!(f, "/"),
+            LoxBinaryOperator::EqualEqual => write!(f, "=="),
+            LoxBinaryOperator::BangEqual => write!(f, "!="),
+            LoxBinaryOperator::Greater => write!(f, ">"),
+            LoxBinaryOperator::GreaterEqual => write!(f, ">="),
+            LoxBinaryOperator::Less => write!(f, "<"),
+            LoxBinaryOperator::LessEqual => write!(f, "<="),
+            LoxBinaryOperator::And => write!(f, "&&"),
+            LoxBinaryOperator::Or => write!(f, "||"),
+        }
+    }
 }
 
 impl TryFrom<scanner::Token> for LoxBinaryOperator {

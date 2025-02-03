@@ -30,11 +30,9 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**Expression** -> LogicalExpression
 >
->**LogicalExpression** -> EqualityExpression ( "||" EqualityExpression | "&&" EqualityExpression )\*
+>**LogicalExpression** -> ComparisonExpression ( "||" ComparisonExpression | "&&" ComparisonExpression )\*
 >
->**EqualityExpression** -> ComparisonExpression ( ( "!=" | "==" ) ComparisonExpression )\*
->
->**ComparisonExpression** -> AdditionExpression ( ( ">" | ">=" | "<" | "<=" ) AdditionExpression )\*
+>**ComparisonExpression** -> AdditionExpression ( ( ">" | ">=" | "<" | "<=" | "!=" | "==" ) AdditionExpression )
 >
 >**AdditionExpression** -> MultiplicationExpression ( ( "+" | "-" ) MultiplicationExpression )\*
 >
