@@ -52,8 +52,8 @@ impl Parser {
     }
 
     fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
-        self.expect_token(scanner::TokenType::Var)?;
-        let token = self.expect_token(scanner::TokenType::Identifier)?;
+        let token = self.expect_token(scanner::TokenType::Var)?;
+        self.expect_token(scanner::TokenType::Identifier)?;
 
         let initializer = if self.peek().token_type == scanner::TokenType::Equal {
             self.advance();
@@ -61,6 +61,7 @@ impl Parser {
         } else {
             None
         };
+
         Ok(Stmt::VarDeclaration {
             name: token.lexeme,
             initializer,

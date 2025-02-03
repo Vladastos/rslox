@@ -8,6 +8,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use interpreter::Environment;
 use log::{debug, error};
 use scanner::TokenType;
 use thiserror::Error;
@@ -25,12 +26,14 @@ impl Lox {
             path: path.to_owned(),
             source,
         })?;
+        let mut environment = Environment::new();
 
-        self.run(&source)?;
+        self.run(&source, &mut environment)?;
         Ok(())
     }
 
     pub fn run_prompt(&mut self) -> Result<(), LoxError> {
+        let mut environment = Environment::new();
         loop {
             let mut line = String::new();
             print!("> ");
@@ -42,7 +45,7 @@ impl Lox {
                 break;
             }
 
-            let result = self.run(&line);
+            let result = self.run(&line, &mut environment);
 
             if result.is_err() {
                 println!("{}", result.unwrap_err());
@@ -51,7 +54,7 @@ impl Lox {
         Ok(())
     }
 
-    fn run(&mut self, source: &str) -> Result<(), LoxError> {
+    fn run(&mut self, source: &str, environment: &mut Environment) -> Result<(), LoxError> {
         // Scan the source code into tokens
         debug!("Scanning source code");
         let tokens = scanner::Scanner::new(source).scan_tokens()?;
@@ -61,7 +64,7 @@ impl Lox {
         debug!("Parsed statements: {:#?}", parse_result);
 
         // Run the statements
-        interpreter::Interpreter::new().run(&parse_result)?;
+        interpreter::Interpreter::new(environment).run(&parse_result)?;
 
         Ok(())
     }
@@ -140,4 +143,6 @@ pub enum InterpreterError {
         found: String,
         expected: &'static str,
     },
+    #[error("Undefined variable: {name}")]
+    UndefinedVariable { name: String },
 }

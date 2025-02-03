@@ -1,6 +1,8 @@
 //! TODO:
 //!  - Change the return type of the `name()` method of `LoxValue` to `&str`.
 
+use std::collections::HashMap;
+
 use log::debug;
 use ordered_float::OrderedFloat;
 
@@ -8,21 +10,25 @@ use super::InterpreterError;
 use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
 
-pub struct Interpreter;
+pub struct Interpreter<'a> {
+    environment: &'a mut Environment,
+}
 
-impl Interpreter {
-    pub fn new() -> Interpreter {
-        Interpreter
+impl Interpreter<'_> {
+    pub fn new(environment: &mut Environment) -> Interpreter {
+        Interpreter { environment }
     }
 
-    pub fn run(&self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
+    pub fn run(&mut self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
+        debug!("Environment: {:#?}", self.environment);
+        debug!("Statements: {:#?}", statements);
         for statement in statements {
             self.interpret_statement(statement)?
         }
         Ok(())
     }
 
-    fn interpret_statement(&self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
+    fn interpret_statement(&mut self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
         match statement {
             Stmt::Expression { .. } => Ok(()),
             Stmt::Print { expression } => {
@@ -30,7 +36,10 @@ impl Interpreter {
                 println!("{}", value);
                 Ok(())
             }
-            Stmt::VarDeclaration { name, initializer } => unimplemented!(),
+            Stmt::VarDeclaration { name, initializer } => self.interpret_variable_declaration(
+                name,
+                initializer.as_ref().map(|expr| expr.clone()),
+            ),
         }
     }
 
@@ -47,10 +56,31 @@ impl Interpreter {
             Expr::Grouping { expression } => self.interpret_expression(expression),
             Expr::Literal { value } => self.interpret_literal(value),
             Expr::Unary { operator, right } => self.interpret_unary(operator, right),
-            Expr::Variable { name } => unimplemented!(),
+            Expr::Variable { name } => self.interpret_variable(name),
         }
     }
 
+    fn interpret_variable_declaration(
+        &mut self,
+        name: &str,
+        initializer: Option<parser::Expr>,
+    ) -> Result<(), InterpreterError> {
+        let value = if let Some(initializer) = initializer {
+            self.interpret_expression(&initializer)?
+        } else {
+            LoxValue::Nil
+        };
+        self.environment.define(name.to_owned(), value);
+        Ok(())
+    }
+
+    fn interpret_variable(&self, name: &str) -> Result<LoxValue, InterpreterError> {
+        self.environment
+            .get(name)
+            .ok_or_else(|| InterpreterError::UndefinedVariable {
+                name: name.to_owned(),
+            })
+    }
     fn interpret_literal(
         &self,
         literal: &parser::LoxParserValue,
@@ -226,6 +256,36 @@ impl Interpreter {
                 }
             }
             parser::LoxUnaryOperator::Bang => Ok(LoxValue::Boolean(!right.is_truthy())),
+        }
+    }
+}
+
+/// An environment is a mapping from variable names to values.
+#[derive(Debug)]
+pub struct Environment {
+    parent: Option<Box<Environment>>,
+    values: HashMap<String, LoxValue>,
+}
+
+impl Environment {
+    pub fn new() -> Environment {
+        Environment {
+            parent: None,
+            values: HashMap::new(),
+        }
+    }
+
+    pub fn define(&mut self, name: String, value: LoxValue) {
+        self.values.insert(name, value);
+    }
+
+    pub fn get(&self, name: &str) -> Option<LoxValue> {
+        match self.values.get(name) {
+            Some(value) => Some(value.clone()),
+            None => match &self.parent {
+                Some(parent) => parent.get(name),
+                None => None,
+            },
         }
     }
 }
