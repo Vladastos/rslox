@@ -124,6 +124,11 @@ pub enum ParserError {
         line: usize,
         column: usize,
     },
+    #[error("Invalid assignment target ")]
+    InvalidAssignmentTarget { line: usize, column: usize },
+
+    #[error("Unterminated block [line {line} column {column}]")]
+    UnterminatedBlock { line: usize, column: usize },
 }
 
 #[derive(Error, Debug)]
@@ -145,4 +150,6 @@ pub enum InterpreterError {
     },
     #[error("Undefined variable: {name}")]
     UndefinedVariable { name: String },
+    #[error("Division by zero")]
+    DivisionByZero,
 }

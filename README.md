@@ -26,15 +26,21 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**VarDeclaration** -> "var" *IDENTIFIER* ( "=" Expression )? ;
 >
->**Statement** -> ExpressionStatement | PrintStatement
+>**Statement** -> ExpressionStatement | PrintStatement | Block
+>
+>**Block** -> "{" Declaration\* "}"
 >
 >**ExpressionStatement** -> Expression ;
 >
 >**PrintStatement** -> "print" Expression ;
 >
->**Expression** -> LogicalExpression
+>**Expression** -> AssignmentExpression
 >
->**LogicalExpression** -> ComparisonExpression ( "||" ComparisonExpression | "&&" ComparisonExpression )\*
+>**AssignmentExpression** -> *IDENTIFIER* "=" AssignmentExpression | LogicalOrExpression 
+>
+>**LogicalOrExpression** -> LogicalAndExpression ( "||" LogicalAndExpression )\*
+>
+>**LogicalAndExpression** -> ComparisonExpression ( "&&" ComparisonExpression )\*
 >
 >**ComparisonExpression** -> AdditionExpression ( ( ">" | ">=" | "<" | "<=" | "!=" | "==" ) AdditionExpression )
 >

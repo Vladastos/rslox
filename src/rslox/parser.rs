@@ -44,11 +44,11 @@ impl Parser {
 
     fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
-            scanner::TokenType::Var => self.parse_var_declaration(),
-            _ => self.parse_statement(),
+            scanner::TokenType::Var => self.parse_var_declaration()?,
+            _ => self.parse_statement()?,
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
-        result
+        Ok(result)
     }
 
     fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
@@ -74,6 +74,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
             scanner::TokenType::Print => self.parse_print_statement(),
+            scanner::TokenType::LeftBrace => self.parse_block_statement(),
             _ => self.parse_expression_statement(),
         };
         result
@@ -103,19 +104,53 @@ impl Parser {
         })
     }
 
+    fn parse_block_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
+        let mut statements: Vec<Stmt> = Vec::new();
+        while self.peek().token_type != scanner::TokenType::RightBrace {
+            if self.is_at_end() {
+                return Err(ParserError::UnterminatedBlock {
+                    line: self.peek().line,
+                    column: self.peek().column,
+                });
+            }
+            statements.push(self.parse_declaration()?);
+        }
+        self.expect_token(scanner::TokenType::RightBrace)?;
+        Ok(Stmt::Block { statements })
+    }
+
     /// Parses an expression.
     ///
     /// This is the entry point for parsing an expression. It will parse a logical expression.
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
-        self.parse_logical()
+        self.parse_assignment()
     }
 
-    fn parse_logical(&mut self) -> Result<Expr, ParserError> {
-        let mut expr = self.parse_comparison()?;
-        while let Some(operator) =
-            self.match_any_token(&[scanner::TokenType::Or, scanner::TokenType::And])
-        {
-            let right = self.parse_comparison()?;
+    fn parse_assignment(&mut self) -> Result<Expr, ParserError> {
+        let token = self.peek().clone();
+        let expr = self.parse_logical_or()?;
+        if self.match_token(scanner::TokenType::Equal).is_some() {
+            let value = self.parse_expression()?;
+            if let Expr::Variable { name } = expr {
+                return Ok(Expr::Assignment {
+                    name,
+                    value: Box::new(value),
+                });
+            } else {
+                return Err(ParserError::InvalidAssignmentTarget {
+                    line: token.line,
+                    column: token.column,
+                });
+            }
+        }
+        Ok(expr)
+    }
+
+    fn parse_logical_or(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.parse_logical_and()?;
+        while let Some(operator) = self.match_token(scanner::TokenType::Or) {
+            let right = self.parse_logical_and()?;
             let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -126,6 +161,19 @@ impl Parser {
         Ok(expr)
     }
 
+    fn parse_logical_and(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.parse_comparison()?;
+        while let Some(operator) = self.match_token(scanner::TokenType::And) {
+            let right = self.parse_comparison()?;
+            let operator = LoxBinaryOperator::try_from(operator)?;
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
+    }
     /// Parses a comparison expression.
     ///
     /// This handles comparison operations by first parsing a term expression.
@@ -403,6 +451,9 @@ pub enum Stmt {
         name: String,
         initializer: Option<Expr>,
     },
+    Block {
+        statements: Vec<Stmt>,
+    },
 }
 
 /// Expression
@@ -426,6 +477,10 @@ pub enum Expr {
     },
     Variable {
         name: String,
+    },
+    Assignment {
+        name: String,
+        value: Box<Expr>,
     },
 }
 

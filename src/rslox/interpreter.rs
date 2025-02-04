@@ -20,8 +20,6 @@ impl Interpreter<'_> {
     }
 
     pub fn run(&mut self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
-        debug!("Environment: {:#?}", self.environment);
-        debug!("Statements: {:#?}", statements);
         for statement in statements {
             self.interpret_statement(statement)?
         }
@@ -30,7 +28,10 @@ impl Interpreter<'_> {
 
     fn interpret_statement(&mut self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
         match statement {
-            Stmt::Expression { .. } => Ok(()),
+            Stmt::Expression { expression } => {
+                self.interpret_expression(expression)?;
+                Ok(())
+            }
             Stmt::Print { expression } => {
                 let value = self.interpret_expression(expression)?;
                 println!("{}", value);
@@ -40,11 +41,17 @@ impl Interpreter<'_> {
                 name,
                 initializer.as_ref().map(|expr| expr.clone()),
             ),
+            Stmt::Block { statements } => {
+                self.environment.new_scope();
+                self.run(statements)?;
+                self.environment.restore_scope();
+                Ok(())
+            }
         }
     }
 
     fn interpret_expression(
-        &self,
+        &mut self,
         expression: &parser::Expr,
     ) -> Result<LoxValue, InterpreterError> {
         match expression {
@@ -57,6 +64,17 @@ impl Interpreter<'_> {
             Expr::Literal { value } => self.interpret_literal(value),
             Expr::Unary { operator, right } => self.interpret_unary(operator, right),
             Expr::Variable { name } => self.interpret_variable(name),
+            Expr::Assignment { name, value } => {
+                let value = self.interpret_expression(value)?;
+                let value = self.environment.assign(name, value.clone());
+                if let Some(value) = value {
+                    Ok(value)
+                } else {
+                    Err(InterpreterError::UndefinedVariable {
+                        name: name.to_owned(),
+                    })
+                }
+            }
         }
     }
 
@@ -94,7 +112,7 @@ impl Interpreter<'_> {
     }
 
     fn interpret_binary(
-        &self,
+        &mut self,
         left: &parser::Expr,
         operator: &parser::LoxBinaryOperator,
         right: &parser::Expr,
@@ -105,10 +123,6 @@ impl Interpreter<'_> {
             "Interpreting binary expression: {} {} {}",
             left, operator, right
         );
-        // Return nil if one of the operands is nil
-        if let (LoxValue::Nil, _) | (_, LoxValue::Nil) = (left.clone(), right.clone()) {
-            return Ok(LoxValue::Nil);
-        }
 
         match operator {
             parser::LoxBinaryOperator::Plus => match left {
@@ -159,7 +173,13 @@ impl Interpreter<'_> {
             },
             parser::LoxBinaryOperator::Slash => match left {
                 LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Number(left / right)),
+                    LoxValue::Number(right) => {
+                        let value = left / right;
+                        if value.is_infinite() {
+                            return Err(InterpreterError::DivisionByZero);
+                        }
+                        Ok(LoxValue::Number(value))
+                    }
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -225,16 +245,24 @@ impl Interpreter<'_> {
             parser::LoxBinaryOperator::BangEqual => Ok(LoxValue::Boolean(left != right)),
             parser::LoxBinaryOperator::EqualEqual => Ok(LoxValue::Boolean(left == right)),
             parser::LoxBinaryOperator::And => {
-                Ok(LoxValue::Boolean(left.is_truthy() && right.is_truthy()))
+                if left.is_truthy() {
+                    Ok(right)
+                } else {
+                    Ok(left)
+                }
             }
             parser::LoxBinaryOperator::Or => {
-                Ok(LoxValue::Boolean(left.is_truthy() || right.is_truthy()))
+                if !left.is_truthy() {
+                    Ok(right)
+                } else {
+                    Ok(left)
+                }
             }
         }
     }
 
     fn interpret_unary(
-        &self,
+        &mut self,
         operator: &parser::LoxUnaryOperator,
         right: &parser::Expr,
     ) -> Result<LoxValue, InterpreterError> {
@@ -261,7 +289,7 @@ impl Interpreter<'_> {
 }
 
 /// An environment is a mapping from variable names to values.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Environment {
     parent: Option<Box<Environment>>,
     values: HashMap<String, LoxValue>,
@@ -287,6 +315,27 @@ impl Environment {
                 None => None,
             },
         }
+    }
+
+    pub fn assign(&mut self, name: &str, new_value: LoxValue) -> Option<LoxValue> {
+        match self.values.get_mut(name) {
+            Some(value) => Some(std::mem::replace(value, new_value.clone())),
+            None => match &mut self.parent {
+                Some(parent) => parent.assign(name, new_value),
+                None => None,
+            },
+        }
+    }
+
+    pub fn new_scope(&mut self) {
+        self.parent = Some(Box::new(self.clone()));
+        self.values = HashMap::new();
+    }
+    pub fn restore_scope(&mut self) {
+        assert!(self.parent.is_some());
+        let parent = self.parent.take().unwrap();
+        self.values = parent.values;
+        self.parent = parent.parent;
     }
 }
 
