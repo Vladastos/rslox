@@ -32,7 +32,9 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**PrintStatement** -> "print" Expression ;
 >
->**Expression** -> LogicalExpression
+>**Expression** -> AssignmentExpression
+>
+>**AssignmentExpression** -> *IDENTIFIER* "=" AssignmentExpression | LogicalExpression 
 >
 >**LogicalExpression** -> ComparisonExpression ( "||" ComparisonExpression | "&&" ComparisonExpression )\*
 >

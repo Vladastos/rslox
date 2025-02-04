@@ -124,6 +124,8 @@ pub enum ParserError {
         line: usize,
         column: usize,
     },
+    #[error("Invalid assignment target ")]
+    InvalidAssignmentTarget { line: usize, column: usize },
 }
 
 #[derive(Error, Debug)]

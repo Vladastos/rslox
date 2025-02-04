@@ -107,7 +107,27 @@ impl Parser {
     ///
     /// This is the entry point for parsing an expression. It will parse a logical expression.
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
-        self.parse_logical()
+        self.parse_assignment()
+    }
+
+    fn parse_assignment(&mut self) -> Result<Expr, ParserError> {
+        let token = self.peek().clone();
+        let expr = self.parse_logical()?;
+        if self.match_token(scanner::TokenType::Equal).is_some() {
+            let value = self.parse_expression()?;
+            if let Expr::Variable { name } = expr {
+                return Ok(Expr::Assignment {
+                    name,
+                    value: Box::new(value),
+                });
+            } else {
+                return Err(ParserError::InvalidAssignmentTarget {
+                    line: token.line,
+                    column: token.column,
+                });
+            }
+        }
+        Ok(expr)
     }
 
     fn parse_logical(&mut self) -> Result<Expr, ParserError> {
@@ -426,6 +446,10 @@ pub enum Expr {
     },
     Variable {
         name: String,
+    },
+    Assignment {
+        name: String,
+        value: Box<Expr>,
     },
 }
 

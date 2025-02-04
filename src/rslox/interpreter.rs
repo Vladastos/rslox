@@ -20,8 +20,6 @@ impl Interpreter<'_> {
     }
 
     pub fn run(&mut self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
-        debug!("Environment: {:#?}", self.environment);
-        debug!("Statements: {:#?}", statements);
         for statement in statements {
             self.interpret_statement(statement)?
         }
@@ -30,7 +28,10 @@ impl Interpreter<'_> {
 
     fn interpret_statement(&mut self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
         match statement {
-            Stmt::Expression { .. } => Ok(()),
+            Stmt::Expression { expression } => {
+                self.interpret_expression(expression)?;
+                Ok(())
+            }
             Stmt::Print { expression } => {
                 let value = self.interpret_expression(expression)?;
                 println!("{}", value);
@@ -44,7 +45,7 @@ impl Interpreter<'_> {
     }
 
     fn interpret_expression(
-        &self,
+        &mut self,
         expression: &parser::Expr,
     ) -> Result<LoxValue, InterpreterError> {
         match expression {
@@ -57,6 +58,17 @@ impl Interpreter<'_> {
             Expr::Literal { value } => self.interpret_literal(value),
             Expr::Unary { operator, right } => self.interpret_unary(operator, right),
             Expr::Variable { name } => self.interpret_variable(name),
+            Expr::Assignment { name, value } => {
+                let value = self.interpret_expression(value)?;
+                let value = self.environment.assign(name, value.clone());
+                if let Some(value) = value {
+                    Ok(value)
+                } else {
+                    Err(InterpreterError::UndefinedVariable {
+                        name: name.to_owned(),
+                    })
+                }
+            }
         }
     }
 
@@ -94,7 +106,7 @@ impl Interpreter<'_> {
     }
 
     fn interpret_binary(
-        &self,
+        &mut self,
         left: &parser::Expr,
         operator: &parser::LoxBinaryOperator,
         right: &parser::Expr,
@@ -234,7 +246,7 @@ impl Interpreter<'_> {
     }
 
     fn interpret_unary(
-        &self,
+        &mut self,
         operator: &parser::LoxUnaryOperator,
         right: &parser::Expr,
     ) -> Result<LoxValue, InterpreterError> {
@@ -284,6 +296,16 @@ impl Environment {
             Some(value) => Some(value.clone()),
             None => match &self.parent {
                 Some(parent) => parent.get(name),
+                None => None,
+            },
+        }
+    }
+
+    pub fn assign(&mut self, name: &str, new_value: LoxValue) -> Option<LoxValue> {
+        match self.values.get_mut(name) {
+            Some(value) => Some(std::mem::replace(value, new_value.clone())),
+            None => match &mut self.parent {
+                Some(parent) => parent.assign(name, new_value),
                 None => None,
             },
         }
