@@ -1,6 +1,8 @@
 mod interpreter;
 mod parser;
 mod scanner;
+
+#[cfg(test)]
 mod tests;
 
 use std::{
