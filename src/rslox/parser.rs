@@ -2,6 +2,7 @@
 //!  - Add more error types
 //!  - Improve error messages
 
+use log::debug;
 use ordered_float::OrderedFloat;
 
 use crate::rslox::scanner;
@@ -75,9 +76,92 @@ impl Parser {
         let result = match self.peek().token_type {
             scanner::TokenType::Print => self.parse_print_statement(),
             scanner::TokenType::LeftBrace => self.parse_block_statement(),
+            scanner::TokenType::If => self.parse_if_statement(),
+            scanner::TokenType::While => self.parse_while_statement(),
+            scanner::TokenType::For => self.parse_for_statement(),
             _ => self.parse_expression_statement(),
         };
+        debug!("parsed statement: {:#?}", result);
         result
+    }
+
+    fn parse_if_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
+        self.expect_token(scanner::TokenType::LeftParen)?;
+        let condition = self.parse_expression()?;
+        self.expect_token(scanner::TokenType::RightParen)?;
+        let then_branch = Box::from(self.parse_statement()?);
+        let else_branch = if self.match_token(scanner::TokenType::Else).is_some() {
+            Some(Box::from(self.parse_statement()?))
+        } else {
+            None
+        };
+        Ok(Stmt::If {
+            condition,
+            then_branch,
+            else_branch,
+        })
+    }
+
+    fn parse_while_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
+        self.expect_token(scanner::TokenType::LeftParen)?;
+        let condition = self.parse_expression()?;
+        self.expect_token(scanner::TokenType::RightParen)?;
+        let body = Box::from(self.parse_statement()?);
+        Ok(Stmt::While { condition, body })
+    }
+
+    /// Parse a for loop into a while loop
+    ///
+    /// Returns a `Stmt::Block` node containing the loop body
+    fn parse_for_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
+        self.expect_token(scanner::TokenType::LeftParen)?;
+
+        let initializer = if self.match_token(scanner::TokenType::Semicolon).is_some() {
+            None
+        } else {
+            Some(Box::from(self.parse_declaration()?))
+        };
+        let condition = if self.match_token(scanner::TokenType::Semicolon).is_some() {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+        self.expect_token(scanner::TokenType::Semicolon)?;
+        let increment = if self.match_token(scanner::TokenType::Semicolon).is_some() {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+        self.expect_token(scanner::TokenType::RightParen)?;
+        let body = Box::from(Stmt::Block {
+            statements: vec![
+                self.parse_statement()?,
+                Stmt::Expression {
+                    expression: increment.unwrap_or(Expr::Literal {
+                        value: LoxParserValue::Nil,
+                    }),
+                },
+            ],
+        });
+
+        return Ok(Stmt::Block {
+            statements: vec![
+                *initializer.unwrap_or(Box::from(Stmt::Expression {
+                    expression: Expr::Literal {
+                        value: LoxParserValue::Nil,
+                    },
+                })),
+                Stmt::While {
+                    condition: condition.unwrap_or(Expr::Literal {
+                        value: LoxParserValue::Boolean(true),
+                    }),
+                    body,
+                },
+            ],
+        });
     }
 
     /// Parses an expression statement.
@@ -453,6 +537,15 @@ pub enum Stmt {
     },
     Block {
         statements: Vec<Stmt>,
+    },
+    If {
+        condition: Expr,
+        then_branch: Box<Stmt>,
+        else_branch: Option<Box<Stmt>>,
+    },
+    While {
+        condition: Expr,
+        body: Box<Stmt>,
     },
 }
 
