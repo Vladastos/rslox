@@ -123,10 +123,6 @@ impl Interpreter<'_> {
             "Interpreting binary expression: {} {} {}",
             left, operator, right
         );
-        // Return nil if one of the operands is nil
-        if let (LoxValue::Nil, _) | (_, LoxValue::Nil) = (left.clone(), right.clone()) {
-            return Ok(LoxValue::Nil);
-        }
 
         match operator {
             parser::LoxBinaryOperator::Plus => match left {
@@ -177,7 +173,13 @@ impl Interpreter<'_> {
             },
             parser::LoxBinaryOperator::Slash => match left {
                 LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Number(left / right)),
+                    LoxValue::Number(right) => {
+                        let value = left / right;
+                        if value.is_infinite() {
+                            return Err(InterpreterError::DivisionByZero);
+                        }
+                        Ok(LoxValue::Number(value))
+                    }
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",

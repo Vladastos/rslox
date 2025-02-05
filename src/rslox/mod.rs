@@ -150,4 +150,6 @@ pub enum InterpreterError {
     },
     #[error("Undefined variable: {name}")]
     UndefinedVariable { name: String },
+    #[error("Division by zero")]
+    DivisionByZero,
 }
