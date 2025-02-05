@@ -243,10 +243,18 @@ impl Interpreter<'_> {
             parser::LoxBinaryOperator::BangEqual => Ok(LoxValue::Boolean(left != right)),
             parser::LoxBinaryOperator::EqualEqual => Ok(LoxValue::Boolean(left == right)),
             parser::LoxBinaryOperator::And => {
-                Ok(LoxValue::Boolean(left.is_truthy() && right.is_truthy()))
+                if left.is_truthy() {
+                    Ok(right)
+                } else {
+                    Ok(left)
+                }
             }
             parser::LoxBinaryOperator::Or => {
-                Ok(LoxValue::Boolean(left.is_truthy() || right.is_truthy()))
+                if !left.is_truthy() {
+                    Ok(right)
+                } else {
+                    Ok(left)
+                }
             }
         }
     }

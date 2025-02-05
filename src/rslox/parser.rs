@@ -129,7 +129,7 @@ impl Parser {
 
     fn parse_assignment(&mut self) -> Result<Expr, ParserError> {
         let token = self.peek().clone();
-        let expr = self.parse_logical()?;
+        let expr = self.parse_logical_or()?;
         if self.match_token(scanner::TokenType::Equal).is_some() {
             let value = self.parse_expression()?;
             if let Expr::Variable { name } = expr {
@@ -147,12 +147,10 @@ impl Parser {
         Ok(expr)
     }
 
-    fn parse_logical(&mut self) -> Result<Expr, ParserError> {
-        let mut expr = self.parse_comparison()?;
-        while let Some(operator) =
-            self.match_any_token(&[scanner::TokenType::Or, scanner::TokenType::And])
-        {
-            let right = self.parse_comparison()?;
+    fn parse_logical_or(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.parse_logical_and()?;
+        while let Some(operator) = self.match_token(scanner::TokenType::Or) {
+            let right = self.parse_logical_and()?;
             let operator = LoxBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -163,6 +161,19 @@ impl Parser {
         Ok(expr)
     }
 
+    fn parse_logical_and(&mut self) -> Result<Expr, ParserError> {
+        let mut expr = self.parse_comparison()?;
+        while let Some(operator) = self.match_token(scanner::TokenType::And) {
+            let right = self.parse_comparison()?;
+            let operator = LoxBinaryOperator::try_from(operator)?;
+            expr = Expr::Binary {
+                left: Box::new(expr),
+                operator,
+                right: Box::new(right),
+            };
+        }
+        Ok(expr)
+    }
     /// Parses a comparison expression.
     ///
     /// This handles comparison operations by first parsing a term expression.
