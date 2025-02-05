@@ -26,7 +26,11 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**VarDeclaration** -> "var" *IDENTIFIER* ( "=" Expression )? ;
 >
->**Statement** -> ExpressionStatement | PrintStatement | Block
+>**Statement** -> ExpressionStatement | PrintStatement | WhileStatement | IfStatement | Block
+>
+>**WhileStatement** -> "while" "(" Expression ")" Statement
+>
+>**IfStatement** -> "if" "(" Expression ")" Statement ( "else" Statement )?
 >
 >**Block** -> "{" Declaration\* "}"
 >

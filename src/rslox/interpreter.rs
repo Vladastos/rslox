@@ -47,7 +47,42 @@ impl Interpreter<'_> {
                 self.environment.restore_scope();
                 Ok(())
             }
+            Stmt::If {
+                condition,
+                then_branch,
+                else_branch,
+            } => self.interpret_if_statement(condition, then_branch, else_branch),
+            Stmt::While { condition, body } => self.interpret_while_statement(condition, body),
         }
+    }
+
+    fn interpret_if_statement(
+        &mut self,
+        condition: &parser::Expr,
+        then_branch: &parser::Stmt,
+        else_branch: &Option<Box<parser::Stmt>>,
+    ) -> Result<(), InterpreterError> {
+        let condition_result = self.interpret_expression(condition)?;
+        if condition_result.is_truthy() {
+            self.interpret_statement(then_branch)
+        } else {
+            if let Some(else_branch) = else_branch {
+                self.interpret_statement(else_branch)
+            } else {
+                Ok(())
+            }
+        }
+    }
+
+    fn interpret_while_statement(
+        &mut self,
+        condition: &parser::Expr,
+        body: &parser::Stmt,
+    ) -> Result<(), InterpreterError> {
+        while self.interpret_expression(condition)?.is_truthy() {
+            self.interpret_statement(body)?
+        }
+        Ok(())
     }
 
     fn interpret_expression(
