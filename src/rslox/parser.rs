@@ -44,11 +44,11 @@ impl Parser {
 
     fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
-            scanner::TokenType::Var => self.parse_var_declaration(),
-            _ => self.parse_statement(),
+            scanner::TokenType::Var => self.parse_var_declaration()?,
+            _ => self.parse_statement()?,
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
-        result
+        Ok(result)
     }
 
     fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
@@ -107,7 +107,13 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<Stmt, ParserError> {
         self.advance();
         let mut statements: Vec<Stmt> = Vec::new();
-        while !(self.peek().token_type == scanner::TokenType::RightBrace) && !self.is_at_end() {
+        while self.peek().token_type != scanner::TokenType::RightBrace {
+            if self.is_at_end() {
+                return Err(ParserError::UnterminatedBlock {
+                    line: self.peek().line,
+                    column: self.peek().column,
+                });
+            }
             statements.push(self.parse_declaration()?);
         }
         self.expect_token(scanner::TokenType::RightBrace)?;

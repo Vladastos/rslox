@@ -43,7 +43,7 @@ impl Interpreter<'_> {
             ),
             Stmt::Block { statements } => {
                 self.environment.new_scope();
-                self.run(statements)?.clone();
+                self.run(statements)?;
                 self.environment.restore_scope();
                 Ok(())
             }
