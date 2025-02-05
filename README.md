@@ -36,9 +36,11 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**Expression** -> AssignmentExpression
 >
->**AssignmentExpression** -> *IDENTIFIER* "=" AssignmentExpression | LogicalExpression 
+>**AssignmentExpression** -> *IDENTIFIER* "=" AssignmentExpression | LogicalOrExpression 
 >
->**LogicalExpression** -> ComparisonExpression ( "||" ComparisonExpression | "&&" ComparisonExpression )\*
+>**LogicalOrExpression** -> LogicalAndExpression ( "||" LogicalAndExpression )\*
+>
+>**LogicalAndExpression** -> ComparisonExpression ( "&&" ComparisonExpression )\*
 >
 >**ComparisonExpression** -> AdditionExpression ( ( ">" | ">=" | "<" | "<=" | "!=" | "==" ) AdditionExpression )
 >
