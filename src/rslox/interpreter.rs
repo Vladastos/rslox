@@ -41,6 +41,12 @@ impl Interpreter<'_> {
                 name,
                 initializer.as_ref().map(|expr| expr.clone()),
             ),
+            Stmt::Block { statements } => {
+                self.environment.new_scope();
+                self.run(statements)?.clone();
+                self.environment.restore_scope();
+                Ok(())
+            }
         }
     }
 
@@ -273,7 +279,7 @@ impl Interpreter<'_> {
 }
 
 /// An environment is a mapping from variable names to values.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Environment {
     parent: Option<Box<Environment>>,
     values: HashMap<String, LoxValue>,
@@ -309,6 +315,17 @@ impl Environment {
                 None => None,
             },
         }
+    }
+
+    pub fn new_scope(&mut self) {
+        self.parent = Some(Box::new(self.clone()));
+        self.values = HashMap::new();
+    }
+    pub fn restore_scope(&mut self) {
+        assert!(self.parent.is_some());
+        let parent = self.parent.take().unwrap();
+        self.values = parent.values;
+        self.parent = parent.parent;
     }
 }
 

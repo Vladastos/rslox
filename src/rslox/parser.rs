@@ -74,6 +74,7 @@ impl Parser {
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
             scanner::TokenType::Print => self.parse_print_statement(),
+            scanner::TokenType::LeftBrace => self.parse_block_statement(),
             _ => self.parse_expression_statement(),
         };
         result
@@ -101,6 +102,16 @@ impl Parser {
         Ok(Stmt::Print {
             expression: self.parse_expression()?,
         })
+    }
+
+    fn parse_block_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
+        let mut statements: Vec<Stmt> = Vec::new();
+        while !(self.peek().token_type == scanner::TokenType::RightBrace) && !self.is_at_end() {
+            statements.push(self.parse_declaration()?);
+        }
+        self.expect_token(scanner::TokenType::RightBrace)?;
+        Ok(Stmt::Block { statements })
     }
 
     /// Parses an expression.
@@ -422,6 +433,9 @@ pub enum Stmt {
     VarDeclaration {
         name: String,
         initializer: Option<Expr>,
+    },
+    Block {
+        statements: Vec<Stmt>,
     },
 }
 
