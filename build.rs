@@ -72,11 +72,14 @@ fn main() {
         ),
     ];
 
+    // Signal to cargo that changes in the test directory means a rebuild
+    cargo_emit::rerun_if_changed!("./tests");
+
     for test in Iterator::chain(
         // All test description files
-        glob("tests/**/*.test").unwrap().map(handle_test_file),
+        glob("./tests/**/*.test").unwrap().map(handle_test_file),
         // All test source file
-        glob("tests/**/*.lox").unwrap().map(handle_lox_file),
+        glob("./tests/**/*.lox").unwrap().map(handle_lox_file),
     )
     // Removing all files that maps to the same source
     // In particular, this will remove `.lox` files when the `.test` one is already present
