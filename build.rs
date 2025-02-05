@@ -1,13 +1,16 @@
-use anyhow::bail;
 use const_gen::{const_definition, CompileConst};
 use glob::glob;
+use itertools::Itertools;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use serde::Deserialize;
 use std::{
-    env, fs, io,
-    os::unix::ffi::OsStringExt,
+    env,
+    ffi::OsStr,
+    fs,
+    os::unix::ffi::{OsStrExt, OsStringExt},
     path::{Path, PathBuf},
+    sync::atomic::AtomicUsize,
 };
 
 #[derive(CompileConst)]
@@ -31,6 +34,9 @@ struct TestDescription {
     /// Expected outcome of the test case
     #[serde(default)]
     outcome: TestOutcome,
+    /// Source file containing the tested code
+    #[serde(default)]
+    source: Option<PathBuf>,
 }
 
 #[derive(CompileConst, Deserialize, Default)]
@@ -66,8 +72,25 @@ fn main() {
         ),
     ];
 
-    for test in glob("tests/**/*.lox").unwrap() {
-        let test = match fun_name(test) {
+    for test in Iterator::chain(
+        // All test description files
+        glob("tests/**/*.test").unwrap().map(handle_test_file),
+        // All test source file
+        glob("tests/**/*.lox").unwrap().map(handle_lox_file),
+    )
+    // Removing all files that maps to the same source
+    // In particular, this will remove `.lox` files when the `.test` one is already present
+    .unique_by(|r| {
+        // Mapping each value to either the canonicalized path, or a unique increasing number
+        r.as_ref()
+            .ok()
+            .and_then(|t| Path::new(OsStr::from_bytes(&t.source)).canonicalize().ok())
+            .ok_or_else(|| {
+                static COUNTER: AtomicUsize = AtomicUsize::new(0);
+                COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            })
+    }) {
+        let test = match test {
             Ok(test) => test,
             Err(err) => {
                 cargo_emit::warning!("{}", err);
@@ -98,15 +121,41 @@ fn main() {
     fs::write(&dest_path, const_declarations.join("\n")).unwrap();
 }
 
-fn fun_name(source: Result<PathBuf, glob::GlobError>) -> anyhow::Result<Test> {
+fn handle_test_file(descr_source: Result<PathBuf, glob::GlobError>) -> anyhow::Result<Test> {
+    let descr_source = descr_source?;
+
+    let TestDescription {
+        name,
+        outcome,
+        source,
+    } = toml::from_str(&fs::read_to_string(&descr_source)?)?;
+
+    let source = source.unwrap_or_else(|| descr_source.with_extension("lox"));
+    let name = name.unwrap_or_else(|| {
+        source
+            .file_stem()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .into_owned()
+    });
+
+    let source = source.into_os_string().into_vec();
+
+    Ok(Test {
+        name,
+        outcome,
+        source,
+    })
+}
+
+fn handle_lox_file(source: Result<PathBuf, glob::GlobError>) -> anyhow::Result<Test> {
     let source = source?;
 
-    let TestDescription { name, outcome } = match fs::read_to_string(&source.with_extension("test"))
-    {
-        Ok(test_description) => toml::from_str(&test_description)?,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => TestDescription::default(),
-        Err(err) => bail!(err),
-    };
+    let TestDescription {
+        name,
+        outcome,
+        source: _,
+    } = Default::default();
 
     let name = name.unwrap_or_else(|| {
         source

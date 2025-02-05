@@ -48,14 +48,3 @@ fn test_impl(
         (TestOutcome::Failure { message: None }, Err(_)) => (),
     }
 }
-
-#[test]
-fn non_existent_file() {
-    let mut lox = Lox::new();
-    let result = lox.run_file(std::path::Path::new("tests/non-existent.lox"));
-    assert!(result.is_err());
-    assert_eq!(
-        result.unwrap_err().to_string(),
-        "Could not open file tests/non-existent.lox"
-    );
-}
