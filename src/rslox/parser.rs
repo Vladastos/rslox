@@ -43,6 +43,10 @@ impl Parser {
         }
     }
 
+    /// Parses a declaration.
+    ///
+    /// This is the entry point for parsing a declaration. It will parse either a variable declaration or a statement.
+    /// Expects a semicolon at the end.
     fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
             scanner::TokenType::Var => self.parse_var_declaration()?,
@@ -52,6 +56,7 @@ impl Parser {
         Ok(result)
     }
 
+    /// Parses a variable declaration.
     fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
         let token = self.expect_token(scanner::TokenType::Var)?;
         self.expect_token(scanner::TokenType::Identifier)?;
@@ -85,6 +90,7 @@ impl Parser {
         result
     }
 
+    /// Parses an if statement.
     fn parse_if_statement(&mut self) -> Result<Stmt, ParserError> {
         self.advance();
         self.expect_token(scanner::TokenType::LeftParen)?;
@@ -121,21 +127,31 @@ impl Parser {
 
         let initializer = if self.match_token(scanner::TokenType::Semicolon).is_some() {
             None
+        } else if self.peek().token_type == scanner::TokenType::Var {
+            Some(Box::from(self.parse_var_declaration()?))
         } else {
-            Some(Box::from(self.parse_declaration()?))
+            Some(Box::from(self.parse_expression_statement()?))
         };
+        if initializer.is_some() {
+            self.expect_token(scanner::TokenType::Semicolon)?;
+        }
         let condition = if self.match_token(scanner::TokenType::Semicolon).is_some() {
             None
         } else {
             Some(self.parse_expression()?)
         };
-        self.expect_token(scanner::TokenType::Semicolon)?;
-        let increment = if self.match_token(scanner::TokenType::Semicolon).is_some() {
+
+        if condition.is_some() {
+            self.expect_token(scanner::TokenType::Semicolon)?;
+        }
+        let increment = if self.match_token(scanner::TokenType::RightParen).is_some() {
             None
         } else {
             Some(self.parse_expression()?)
         };
-        self.expect_token(scanner::TokenType::RightParen)?;
+        if increment.is_some() {
+            self.expect_token(scanner::TokenType::RightParen)?;
+        }
         let body = Box::from(Stmt::Block {
             statements: vec![
                 self.parse_statement()?,
@@ -207,6 +223,7 @@ impl Parser {
     /// Parses an expression.
     ///
     /// This is the entry point for parsing an expression. It will parse a logical expression.
+    /// Does not expect a semicolon.
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
         self.parse_assignment()
     }

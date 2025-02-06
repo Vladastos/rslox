@@ -1,6 +1,8 @@
 mod interpreter;
 mod parser;
 mod scanner;
+
+#[cfg(test)]
 mod tests;
 
 use std::{
@@ -67,6 +69,13 @@ impl Lox {
         interpreter::Interpreter::new(environment).run(&parse_result)?;
 
         Ok(())
+    }
+
+    pub fn parse(&mut self, source: &str) -> Result<(), LoxError> {
+        parser::Parser::new(scanner::Scanner::new(source).scan_tokens()?)
+            .parse()
+            .map_err(|errors| LoxError::ParsingError(errors))
+            .map(|_| ())
     }
 }
 

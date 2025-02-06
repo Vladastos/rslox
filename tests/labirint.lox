@@ -1,0 +1,43 @@
+// Labirint printer
+
+// Seed for the RNG
+let SEED = 9321240;
+
+// Width of the labirint
+let WIDTH = 80;
+
+let m = 4294967296;
+let a = 1664525;
+let c = 1013904223;
+
+let state = SEED;
+
+while ( true ) {
+    let col = 0;
+    let row = "";
+
+    while ( col < WIDTH) {
+        let next = a * state + c;
+
+        let m_multiple = 0;
+        let next_addend = m;
+        while ( m_multiple + next_addend <= next ) {
+            while ( m_multiple + next_addend <= next) {
+                next_addend = next_addend * 2;
+            };
+            m_multiple = m_multiple + next_addend / 2;
+            next_addend = m;
+        };
+
+        state = next - m_multiple;
+
+        if ( state * 2 < m )
+            row = row + "/"
+        else
+            row = row + "\";
+
+        col = col + 1;
+    };
+
+    print row;
+};

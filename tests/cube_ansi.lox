@@ -1,0 +1,165 @@
+// Escape sequence (non ASCII!!)
+let ESC = "" + "[";
+
+// Some colors
+
+let RED     = ESC + "31m";
+let GREEN   = ESC + "32m";
+let BLUE    = ESC + "34m";
+let YELLOW  = ESC + "33m";
+let CYAN    = ESC + "36m";
+let MAGENTA = ESC + "35m";
+
+// Control codes
+
+let CLR   = ESC + "2J";
+let HOME  = ESC + "H";
+let RESET = ESC + "0m";
+
+// Rotation matrix
+
+let sT = 0.01745240643;
+let cT = 0.99984769515;
+
+let Dxx = cT;  let Dxy = 0;  let Dxz = sT;
+let Dyx = 0;   let Dyy = 1;  let Dyz = 0;
+let Dzx = -sT; let Dzy = 0;  let Dzz = cT;
+
+let sqrt2 = 0.70710678118;
+
+let Rxx = 1; let Rxy = 0; let Rxz = 0;
+let Ryx = 0; let Ryy = sqrt2; let Ryz = sqrt2;
+let Rzx = 0; let Rzy = -sqrt2; let Rzz = sqrt2;
+
+// Camera position
+
+let CDIST = 7;
+
+// Other consts
+let INF = 1000000;
+
+// Main loop
+
+let color = RESET;
+let new_row = CLR + HOME;
+while (true) {
+
+    // Update rotation matrix
+
+    let Rxx_new = Dxx * Rxx + Dxy * Ryx + Dxz * Rzx;
+    let Rxy_new = Dxx * Rxy + Dxy * Ryy + Dxz * Rzy;
+    let Rxz_new = Dxx * Rxz + Dxy * Ryz + Dxz * Rzz;
+
+    let Ryx_new = Dyx * Rxx + Dyy * Ryx + Dyz * Rzx;
+    let Ryy_new = Dyx * Rxy + Dyy * Ryy + Dyz * Rzy;
+    let Ryz_new = Dyx * Rxz + Dyy * Ryz + Dyz * Rzz;
+
+    let Rzx_new = Dzx * Rxx + Dzy * Ryx + Dzz * Rzx;
+    let Rzy_new = Dzx * Rxy + Dzy * Ryy + Dzz * Rzy;
+    let Rzz_new = Dzx * Rxz + Dzy * Ryz + Dzz * Rzz;
+
+    Rxx = Rxx_new; Rxy = Rxy_new; Rxz = Rxz_new;
+    Ryx = Ryx_new; Ryy = Ryy_new; Ryz = Ryz_new;
+    Rzx = Rzx_new; Rzy = Rzy_new; Rzz = Rzz_new;
+
+    // Update camera position
+
+    let Cx = Rxz * CDIST;
+    let Cy = Ryz * CDIST;
+    let Cz = Rzz * CDIST;
+
+    let y_intercept = 2;
+    while ( y_intercept > -2 ) {
+        let row = new_row;
+        new_row = "";
+
+        let x_intercept = -2;
+        while ( x_intercept < 2 ) {
+            // Pixel vector
+            let cvx = Rxx * x_intercept + Rxy * y_intercept - Rxz * CDIST;
+            let cvy = Ryx * x_intercept + Ryy * y_intercept - Ryz * CDIST;
+            let cvz = Rzx * x_intercept + Rzy * y_intercept - Rzz * CDIST;
+
+            let new_color = RESET;
+            let dist = INF;
+
+            // Distance to the first plane (z = 1; x,y in [-1,1])
+            let dR = (1 - Cz) / cvz;
+            {
+                let b1 = Cx + cvx * dR;
+                let b2 = Cy + cvy * dR;
+                if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
+                    new_color = RED;
+                    dist = dR;
+                };
+            };
+            // Distance to the second plane (z = -1; x,y in [-1,1])
+            let dC = (-1 - Cz) / cvz;
+            if ( dC < dist ) {
+                let b1 = Cx + cvx * dC;
+                let b2 = Cy + cvy * dC;
+                if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
+                    new_color = CYAN;
+                    dist = dC;
+                };
+            };
+            // Distance to the third plane (x = 1; z,y in [-1,1])
+            let dB = (1 - Cx) / cvx;
+            if ( dB < dist ) {
+                let b1 = Cz + cvz * dB;
+                let b2 = Cy + cvy * dB;
+                if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
+                    new_color = BLUE;
+                    dist = dB;
+                };
+            };
+            // Distance to the fourth plane (x = -1; z,y in [-1,1])
+            let dY = (-1 - Cx) / cvx;
+            if ( dY < dist ) {
+                let b1 = Cz + cvz * dY;
+                let b2 = Cy + cvy * dY;
+                if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
+                    new_color = YELLOW;
+                    dist = dY;
+                };
+            };
+            // Distance to the fifth plane (y = 1; x,z in [-1,1])
+            let dG = (1 - Cy) / cvy;
+            if ( dG < dist ) {
+                let b1 = Cz + cvz * dG;
+                let b2 = Cx + cvx * dG;
+                if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
+                    new_color = GREEN;
+                    dist = dG;
+                };
+            };
+            // Distance to the sixth plane (y = -1; x,z in [-1,1])
+            let dM = (-1 - Cy) / cvy;
+            if ( dM < dist ) {
+                let b1 = Cz + cvz * dM;
+                let b2 = Cx + cvx * dM;
+                if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
+                    new_color = MAGENTA;
+                    dist = dM;
+                };
+            };
+
+            if ( new_color != color ) {
+                color = new_color;
+                row = row + color;
+            };
+
+            if ( color != RESET )
+                row = row + "#"
+            else
+                row = row + ".";
+
+            x_intercept = x_intercept + 0.05;
+        };
+
+        print row;
+        y_intercept = y_intercept - 0.1;
+    };
+
+    new_row = HOME;
+};

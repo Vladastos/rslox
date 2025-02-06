@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 
-use log::debug;
 use ordered_float::OrderedFloat;
 
 use super::InterpreterError;
@@ -154,10 +153,6 @@ impl Interpreter<'_> {
     ) -> Result<LoxValue, InterpreterError> {
         let left = self.interpret_expression(left)?;
         let right = self.interpret_expression(right)?;
-        debug!(
-            "Interpreting binary expression: {} {} {}",
-            left, operator, right
-        );
 
         match operator {
             parser::LoxBinaryOperator::Plus => match left {

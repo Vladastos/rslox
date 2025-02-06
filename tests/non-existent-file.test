@@ -1,0 +1,5 @@
+source="tests/non-existent.lox"
+
+[outcome]
+type="Failure"
+message="Could not open file tests/non-existent.lox"

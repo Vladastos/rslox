@@ -1,0 +1,69 @@
+// Mandelbrot set
+
+// == Setup
+
+let ITERATIONS = 128;
+
+let MIN_REAL = -2;
+let MAX_REAL = 0.56;
+let MIN_IMAG = -1.28;
+let MAX_IMAG = 1.28;
+
+let ROWS = 40;
+let COLS = 80;
+
+// == Impl
+
+// looping on the complex plane
+
+let d_real = (MAX_REAL - MIN_REAL) / COLS;
+let d_imag = (MAX_IMAG - MIN_IMAG) / ROWS;
+
+let imag = MIN_IMAG;
+while ( imag < MAX_IMAG ) {
+    let row = "";
+
+    let real = MIN_REAL;
+    while ( real < MAX_REAL ) {
+
+        // implementation of the recursion relation
+        let xr = real;
+        let xi = imag;
+        let iter = 0;
+
+        while ( iter < ITERATIONS && (xr * xr + xi * xi) < 4 ) {
+            let new_xr = xr * xr - xi * xi + real;
+            let new_xi = 2 * xr * xi + imag;
+            xr = new_xr;
+            xi = new_xi;
+
+            iter = iter + 1;
+        };
+
+        if ( iter == ITERATIONS) {
+            row = row + "@";
+        } else if ( iter >= 64 ) {
+            row = row + "%";
+        } else if ( iter >= 32 ) {
+            row = row + "#";
+        } else if ( iter >= 16 ) {
+            row = row + "*";
+        } else if ( iter >= 8 ) {
+            row = row + "+";
+        } else if ( iter >= 4 ) {
+            row = row + "=";
+        } else if ( iter >= 2 ) {
+            row = row + "-";
+        } else if ( iter >= 1 ) {
+            row = row + ":";
+        } else {
+            row = row + ".";
+        };
+
+        real = real + d_real;
+    };
+
+    print row;
+
+    imag = imag + d_imag;
+};

@@ -1,0 +1,3 @@
+[outcome]
+type="Failure"
+message="Syntax error: Unterminated string at line 2"

@@ -23,7 +23,7 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
         ("super", TokenType::Super),
         ("this", TokenType::This),
         ("true", TokenType::True),
-        ("var", TokenType::Var),
+        ("let", TokenType::Var),
         ("while", TokenType::While),
     ])
 });

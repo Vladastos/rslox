@@ -1,0 +1,23 @@
+// Sieve of Eratostene
+
+let END = 100;
+
+print 2;
+
+let i = 3;
+while (i <= END) {
+    let j = 3;
+    let prime = true;
+    while (prime && j * j <= i) {
+        let p = j;
+        while ( p < i) {
+            p = p + j;
+        };
+        prime = p != i;
+        j = j + 2;
+    };
+    if ( prime ) {
+        print i;
+    };
+    i = i + 2;
+};
