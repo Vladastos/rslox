@@ -1,0 +1,52 @@
+// Guessing game
+
+// Seed for the RNG
+var SEED = 9321240;
+
+// Your guess (between 0 and 100)
+var GUESS = 50;
+
+var n;
+
+// RNG
+{
+    var ITERATIONS = 10;
+
+    var m = 4294967296;
+    var a = 1664525;
+    var c = 1013904223;
+
+    n = SEED;
+
+    var i = 0;
+    while ( i <= ITERATIONS) {
+        var next;
+        if ( i < ITERATIONS ) {
+            next = a * n + c;
+        } else {
+            m = 101;
+            next = n;
+        };
+
+        var m_multiple = 0;
+        var next_addend = m;
+        while ( m_multiple + next_addend <= next ) {
+            while ( m_multiple + next_addend <= next) {
+                next_addend = next_addend * 2;
+            };
+            m_multiple = m_multiple + next_addend / 2;
+            next_addend = m;
+        };
+
+        n = next - m_multiple;
+
+        i = i + 1;
+    };
+};
+
+if ( GUESS < n ) 
+    print "Uhh, GUESS is too low ):"
+else if ( GUESS > n )
+    print "Ahh, GUESS is too high :("
+else 
+    print "Yeah, GUESS is just right!!";
