@@ -4,14 +4,14 @@
 use crate::rslox::builtins::BUILTINS;
 
 use std::collections::HashMap;
-use std::rc::Rc;
 
-use log::{debug, info};
 use ordered_float::OrderedFloat;
 
 use super::InterpreterError;
+use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
-use crate::rslox::{parser, Lox};
+
+/// Interpreter
 
 pub struct Interpreter<'a> {
     environment: &'a mut Environment,
@@ -22,6 +22,21 @@ impl Interpreter<'_> {
         Interpreter { environment }
     }
 
+    /// Executes a list of statements in the current environment.
+    ///
+    /// This function iterates over each statement in the provided slice,
+    /// interpreting it within the current environment. If interpreting
+    /// any statement results in an error, the function returns an
+    /// `InterpreterError`.
+    ///
+    /// # Arguments
+    ///
+    /// * `statements` - A slice of statements to be executed.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), InterpreterError>` - Returns `Ok(())` if all statements
+    /// are successfully executed, otherwise returns an `InterpreterError`.
     pub fn run(&mut self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
         for statement in statements {
             self.interpret_statement(statement)?
@@ -29,6 +44,22 @@ impl Interpreter<'_> {
         Ok(())
     }
 
+    /// Executes a statement in the current environment.
+    ///
+    /// This function interprets a given statement in the current environment.
+    /// If interpreting the statement results in an error, the function returns an
+    /// `InterpreterError`.
+    ///
+    /// # Arguments
+    ///
+    /// * `statement` - The statement to be executed.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), InterpreterError>` - Returns `Ok(())` if the statement is
+    /// successfully executed, otherwise returns an `InterpreterError`.
+    /// * Err(InterpreterError::Return { value }) - Returns an `InterpreterError::Return`
+    /// with the value that was returned from the function.
     fn interpret_statement(&mut self, statement: &parser::Stmt) -> Result<(), InterpreterError> {
         match statement {
             Stmt::Expression { expression } => {
@@ -60,9 +91,22 @@ impl Interpreter<'_> {
                 else_branch,
             } => self.interpret_if_statement(condition, then_branch, else_branch),
             Stmt::While { condition, body } => self.interpret_while_statement(condition, body),
+            Stmt::Return { value } => {
+                let value = if let Some(value) = value {
+                    self.interpret_expression(value)?
+                } else {
+                    LoxValue::Nil
+                };
+                Err(InterpreterError::Return { value })
+            }
         }
     }
 
+    /// Interprets an if statement.
+    ///
+    /// Evaluates the condition expression.
+    /// If the result is truthy, it interprets the then-branch statement.
+    /// Otherwise, it interprets the else-branch statement if present, or returns Ok(()) if not.
     fn interpret_if_statement(
         &mut self,
         condition: &parser::Expr,
@@ -81,6 +125,11 @@ impl Interpreter<'_> {
         }
     }
 
+    /// Interprets a while statement.
+    ///
+    /// Evaluates the condition expression until it is no longer truthy.
+    /// While the condition is truthy, it interprets the body statement.
+    /// Returns an error if interpreting the condition or body results in an error.
     fn interpret_while_statement(
         &mut self,
         condition: &parser::Expr,
@@ -92,6 +141,20 @@ impl Interpreter<'_> {
         Ok(())
     }
 
+    /// Evaluates an expression and returns the result.
+    ///
+    /// This function interprets a given expression and returns the result.
+    /// If interpreting the expression results in an error, the function returns an
+    /// `InterpreterError`.
+    ///
+    /// # Arguments
+    ///
+    /// * `expression` - The expression to be evaluated.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the expression is
+    /// successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_expression(
         &mut self,
         expression: &parser::Expr,
@@ -121,6 +184,21 @@ impl Interpreter<'_> {
         }
     }
 
+    /// Defines a variable in the current environment.
+    ///
+    /// If the variable declaration has an initializer, this function evaluates the initializer
+    /// expression and assigns the result to the variable.
+    /// Otherwise, the variable is assigned the value `LoxValue::Nil`.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the variable to be declared.
+    /// * `initializer` - An optional expression to be evaluated and assigned to the variable.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), InterpreterError>` - Returns `Ok(())` if the variable is successfully
+    /// declared, otherwise returns an `InterpreterError`.
     fn interpret_variable_declaration(
         &mut self,
         name: &str,
@@ -135,6 +213,22 @@ impl Interpreter<'_> {
         Ok(())
     }
 
+    /// Interprets a function declaration and defines a callable function in the current environment.
+    ///
+    /// This function creates a new callable `LoxValue` from the given function name, parameters,
+    /// and body. It then defines this function in the current environment, making it available
+    /// for invocation in the interpreted Lox code.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the function to be declared.
+    /// * `parameters` - A slice of parameter names for the function.
+    /// * `body` - The body of the function as a statement block.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<(), InterpreterError>` - Returns `Ok(())` if the function is successfully
+    /// declared, otherwise returns an `InterpreterError`.
     fn interpret_function_declaration(
         &mut self,
         name: &str,
@@ -147,6 +241,9 @@ impl Interpreter<'_> {
             parameters: parameters.to_vec(),
             body: Some(body),
 
+            // This is the function that is called when the function is invoked
+            // with the given arguments. It creates a new scope, defines the
+            // parameters as local variables, and interprets the body of the function.
             function: |interpreter, arguments, parameters: &[String], body| {
                 interpreter.environment.new_scope();
 
@@ -167,6 +264,16 @@ impl Interpreter<'_> {
         Ok(())
     }
 
+    /// Looks up the value of a variable in the current environment.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the variable to look up.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the variable is
+    /// defined, otherwise returns an `InterpreterError::UndefinedVariable`.
     fn interpret_variable(&self, name: &str) -> Result<LoxValue, InterpreterError> {
         self.environment
             .get(name)
@@ -174,6 +281,10 @@ impl Interpreter<'_> {
                 name: name.to_owned(),
             })
     }
+    /// Converts a LoxParserValue to a LoxValue.
+    ///
+    /// This function takes a LoxParserValue and returns its corresponding LoxValue.
+    /// If the LoxParserValue is not a valid LoxValue, it returns an InterpreterError.
     fn interpret_literal(
         &self,
         literal: &parser::LoxParserValue,
@@ -186,6 +297,22 @@ impl Interpreter<'_> {
         }
     }
 
+    /// Evaluates a binary expression and returns the result.
+    ///
+    /// This function first evaluates the left and right sides of the expression and then
+    /// applies the binary operator to the results. If the binary operator does not
+    /// support the types of the left and right sides, it returns an `InterpreterError`.
+    ///
+    /// # Arguments
+    ///
+    /// * `left` - The left side of the binary expression.
+    /// * `operator` - The binary operator to apply to the left and right sides.
+    /// * `right` - The right side of the binary expression.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the binary expression
+    /// is successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_binary(
         &mut self,
         left: &parser::Expr,
@@ -332,6 +459,21 @@ impl Interpreter<'_> {
         }
     }
 
+    /// Evaluates a unary expression and returns the result.
+    ///
+    /// This function interprets a given unary expression and returns the result.
+    /// If interpreting the expression results in an error, the function returns an
+    /// `InterpreterError`.
+    ///
+    /// # Arguments
+    ///
+    /// * `operator` - The unary operator to be evaluated.
+    /// * `right` - The expression to the right of the operator.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the expression is
+    /// successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_unary(
         &mut self,
         operator: &parser::LoxUnaryOperator,
@@ -358,6 +500,21 @@ impl Interpreter<'_> {
         }
     }
 
+    /// Interprets a call expression and returns the result.
+    ///
+    /// This function interprets a given call expression and returns the result.
+    /// If interpreting the expression results in an error, the function returns an
+    /// `InterpreterError`.
+    ///
+    /// # Arguments
+    ///
+    /// * `callee` - The expression to be called.
+    /// * `arguments` - A slice of expressions to be passed as arguments to the function.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the expression is
+    /// successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_call(
         &mut self,
         callee: &parser::Expr,
@@ -480,6 +637,27 @@ impl LoxValue {
         }
     }
 
+    /// Calls a `LoxValue` if it is a callable function, passing the provided arguments.
+    ///
+    /// This method attempts to invoke the function represented by this `LoxValue`
+    /// if it is of the `Callable` variant. It checks if the number of provided
+    /// arguments matches the function's arity and then executes the function
+    /// using the given interpreter context.
+    ///
+    /// # Arguments
+    ///
+    /// * `_interpreter` - The interpreter instance used to execute the function.
+    /// * `_arguments` - A slice of `LoxValue` representing the arguments to be
+    ///   passed to the function.
+    ///
+    /// # Returns
+    ///
+    /// * `Result<LoxValue, InterpreterError>` - Returns the result of the function
+    /// call if successful. If the `LoxValue` is not callable, returns an
+    /// `InterpreterError::NonFunctionCall`. If the argument count is incorrect,
+    /// returns an `InterpreterError::InvalidArgumentCount`. If the function
+    /// terminates with a return value, returns that value.
+
     fn call(
         &self,
         _interpreter: &mut Interpreter,
@@ -499,7 +677,17 @@ impl LoxValue {
                         found: _arguments.len(),
                     });
                 }
-                function(_interpreter, _arguments, &parameters, body.clone())
+
+                let result = function(_interpreter, _arguments, &parameters, body.clone());
+                match result {
+                    Ok(value) => Ok(value),
+                    Err(error) => match error {
+                        InterpreterError::Return { value } => Ok(value),
+                        _ => {
+                            return Err(error);
+                        }
+                    },
+                }
             }
             _ => Err(InterpreterError::NonFunctionCall { name: self.name() }),
         };

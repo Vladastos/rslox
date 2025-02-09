@@ -30,7 +30,7 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**Parameters** -> *IDENTIFIER* ( "," *IDENTIFIER* )\*
 >
->**Statement** -> ExpressionStatement | PrintStatement | WhileStatement | IfStatement | ForStatement | Block
+>**Statement** -> ExpressionStatement | PrintStatement | WhileStatement | IfStatement | ForStatement | ReturnStatement | Block
 >
 >**WhileStatement** -> "while" "(" Expression ")" Statement
 >
@@ -40,9 +40,11 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**Block** -> "{" Declaration\* "}"
 >
->**ExpressionStatement** -> Expression ;
+>**ExpressionStatement** -> Expression ";"
 >
->**PrintStatement** -> "print" Expression ;
+>**ReturnStatement** -> "return" Expression? ";"
+>
+>**PrintStatement** -> "print" Expression ";"
 >
 >**Expression** -> AssignmentExpression
 >

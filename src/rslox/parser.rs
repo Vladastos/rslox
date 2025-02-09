@@ -2,7 +2,6 @@
 //!  - Add more error types
 //!  - Improve error messages
 
-use log::{debug, info};
 use ordered_float::OrderedFloat;
 
 use crate::rslox::scanner;
@@ -58,6 +57,11 @@ impl Parser {
     }
 
     /// Parses a variable declaration.
+    ///
+    /// Expects the current token to be the 'var' keyword.
+    /// Parses the variable name and optional initializer.
+    ///
+    /// Returns a `Stmt::VarDeclaration` with the parsed variable name and initializer.
     fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
         self.expect_token(scanner::TokenType::Var)?;
         let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
@@ -72,18 +76,30 @@ impl Parser {
         Ok(Stmt::VarDeclaration { name, initializer })
     }
 
-    /// Parses a function declaration
+    /// Parses a function declaration.
+    ///
+    /// Expects the current token to be the 'fun' keyword.
+    /// Parses the function name, parameters, and body.
+    ///
+    /// Returns a `Stmt::Function` with the parsed function name, parameters, and body.
     fn parse_fun_declaration(&mut self) -> Result<Stmt, ParserError> {
         self.expect_token(scanner::TokenType::Fun)?;
         let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
         self.expect_token(scanner::TokenType::LeftParen)?;
-        let params = self.parse_fun_params();
+        let params = self.parse_fun_params()?;
         self.expect_token(scanner::TokenType::RightParen)?;
         let body = Box::from(self.parse_block_statement()?);
         Ok(Stmt::Function { name, params, body })
     }
 
-    fn parse_fun_params(&mut self) -> Vec<String> {
+    /// Parses function parameters.
+    ///
+    /// Assumes the current token to be a '(' and expects the next token to be a ')'.
+    /// If the next token is not a ')', then this function parses a comma-separated list of identifiers,
+    /// and returns the list of identifiers.
+    /// If the next token is a ')', then this function returns an empty vector.
+    ///
+    fn parse_fun_params(&mut self) -> Result<Vec<String>, ParserError> {
         let mut params: Vec<String> = Vec::new();
         if !self.check(scanner::TokenType::RightParen) {
             params.push(
@@ -93,19 +109,24 @@ impl Parser {
             );
             while self.check(scanner::TokenType::Comma) {
                 self.advance();
-                params.push(
-                    self.expect_token(scanner::TokenType::Identifier)
-                        .unwrap()
-                        .lexeme,
-                );
+                params.push(self.expect_token(scanner::TokenType::Identifier)?.lexeme);
             }
         }
-        params
+        Ok(params)
     }
 
     /// Parses a statement.
     ///
-    /// This is the entry point for parsing a statement. It will parse an expression statement or a print statement.
+    /// This is the entry point for parsing a statement. It will parse one of the following:
+    ///   - A print statement
+    ///   - A block statement
+    ///   - An if statement
+    ///   - A while statement
+    ///   - A for statement
+    ///   - A return statement
+    ///   - An expression statement
+    ///
+    /// Returns a `Stmt` with the parsed statement.
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
             scanner::TokenType::Print => self.parse_print_statement(),
@@ -113,13 +134,21 @@ impl Parser {
             scanner::TokenType::If => self.parse_if_statement(),
             scanner::TokenType::While => self.parse_while_statement(),
             scanner::TokenType::For => self.parse_for_statement(),
+            scanner::TokenType::Return => self.parse_return_statement(),
             _ => self.parse_expression_statement(),
         };
-        debug!("parsed statement: {:#?}", result);
         result
     }
 
     /// Parses an if statement.
+    ///
+    /// This function assumes that the current token is an 'if' keyword and advances the token stream.
+    /// It then parses the condition enclosed in parentheses, followed by the then-branch statement.
+    /// If an 'else' keyword is present, it also parses the else-branch statement.
+    ///
+    /// Returns a `Stmt::If` node containing the parsed condition, then-branch, and optional else-branch.
+    /// Returns an error if the condition or branches cannot be parsed.
+
     fn parse_if_statement(&mut self) -> Result<Stmt, ParserError> {
         self.advance();
         self.expect_token(scanner::TokenType::LeftParen)?;
@@ -138,8 +167,15 @@ impl Parser {
         })
     }
 
+    /// Parses a while statement.
+    ///
+    /// This function assumes that the current token is a 'while' keyword and advances the token stream.
+    /// It then parses the condition enclosed in parentheses, followed by the loop body statement.
+    ///
+    /// Returns a `Stmt::While` node containing the parsed condition and body.
+    /// Returns an error if the condition or body cannot be parsed.
     fn parse_while_statement(&mut self) -> Result<Stmt, ParserError> {
-        self.advance();
+        self.expect_token(scanner::TokenType::While)?;
         self.expect_token(scanner::TokenType::LeftParen)?;
         let condition = self.parse_expression()?;
         self.expect_token(scanner::TokenType::RightParen)?;
@@ -147,11 +183,18 @@ impl Parser {
         Ok(Stmt::While { condition, body })
     }
 
-    /// Parse a for loop into a while loop
+    /// Parses a for statement.
     ///
-    /// Returns a `Stmt::Block` node containing the loop body
+    /// This function assumes that the current token is a 'for' keyword and advances the token stream.
+    /// It then parses the initializer, condition, and increment parts of the for loop.
+    /// The initializer is either a variable declaration or an expression statement.
+    /// The condition is an expression, or the value true if not present.
+    /// The increment is an expression, or the value nil if not present.
+    ///
+    /// Returns a `Stmt::Block` node containing a while loop statement with the parsed parts.
+    /// Returns an error if any of the parts cannot be parsed.
     fn parse_for_statement(&mut self) -> Result<Stmt, ParserError> {
-        self.advance();
+        self.expect_token(scanner::TokenType::For)?;
         self.expect_token(scanner::TokenType::LeftParen)?;
 
         let initializer = if self.match_token(scanner::TokenType::Semicolon).is_some() {
@@ -209,6 +252,21 @@ impl Parser {
         });
     }
 
+    /// Parses a return statement.
+    ///
+    /// This function assumes that the current token is a 'return' keyword and advances the token stream.
+    /// It then parses an optional expression, and constructs a `Stmt::Return` node containing the parsed expression.
+    /// Returns an error if the expression cannot be parsed.
+    fn parse_return_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.expect_token(scanner::TokenType::Return)?;
+        let value = if self.check(scanner::TokenType::Semicolon) {
+            None
+        } else {
+            Some(self.parse_expression()?)
+        };
+        Ok(Stmt::Return { value })
+    }
+
     /// Parses an expression statement.
     ///
     /// This function parses an expression and constructs a `Stmt::Expression` node containing the parsed expression.
@@ -252,11 +310,18 @@ impl Parser {
     /// Parses an expression.
     ///
     /// This is the entry point for parsing an expression. It will parse a logical expression.
-    /// Does not expect a semicolon.
+    /// Does not expect a semicolon at the end.
     fn parse_expression(&mut self) -> Result<Expr, ParserError> {
         self.parse_assignment()
     }
 
+    /// Parses an assignment expression.
+    ///
+    /// This function parses a logical expression and checks if the next token is an equal sign.
+    /// If it is, it parses the following expression and constructs an assignment expression.
+    /// Otherwise, it returns the parsed logical expression.
+    ///
+    /// Returns an error if the expression cannot be parsed, or if the assignment target is invalid.
     fn parse_assignment(&mut self) -> Result<Expr, ParserError> {
         let token = self.peek().clone();
         let expr = self.parse_logical_or()?;
@@ -277,6 +342,13 @@ impl Parser {
         Ok(expr)
     }
 
+    /// Parses a logical or expression.
+    ///
+    /// This function parses a logical and expression and checks if the next token is an 'or' keyword.
+    /// If it is, it parses the following logical and expression and constructs a binary expression node
+    /// representing the logical or. Otherwise, it returns the parsed logical and expression.
+    ///
+    /// Returns an error if the expression cannot be parsed.
     fn parse_logical_or(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_logical_and()?;
         while let Some(operator) = self.match_token(scanner::TokenType::Or) {
@@ -291,6 +363,13 @@ impl Parser {
         Ok(expr)
     }
 
+    /// Parses a logical and expression.
+    ///
+    /// This function parses a comparison expression and checks if the next token is an 'and' keyword.
+    /// If it is, it parses the following comparison expression and constructs a binary expression node
+    /// representing the logical and. Otherwise, it returns the parsed comparison expression.
+    ///
+    /// Returns an error if the expression cannot be parsed.
     fn parse_logical_and(&mut self) -> Result<Expr, ParserError> {
         let mut expr = self.parse_comparison()?;
         while let Some(operator) = self.match_token(scanner::TokenType::And) {
@@ -440,10 +519,12 @@ impl Parser {
 
     /// Parses a primary expression.
     ///
-    /// This is either a literal value (false, true, nil, a number, or a string), or a grouping
-    /// expression, which is a parenthesized expression.
+    /// This can be one of the following:
+    ///   - A literal value
+    ///   - A variable
+    ///   - A grouping expression (i.e. a parenthesized expression)
     ///
-    /// If the current token is not a primary expression, returns an `UnexpectedTokenNoExpected` error.
+    /// If the current token is not one of the above, returns an error.
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
         if self.match_token(scanner::TokenType::False).is_some() {
             return Ok(Expr::Literal {
@@ -523,10 +604,9 @@ impl Parser {
         }
         self.peek().token_type == token_type
     }
-    /// Consumes the current token if it matches the given `token_type` and returns the token that comes after it.
+    /// Consumes the current token if it matches the given `token_type` and returns it
     /// Returns an error if the current token does not match the given `token_type`.
     fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<Token, ParserError> {
-        //! TODO: Should return the matched token instead
         if self.peek().token_type == token_type {
             let token = self.peek().clone();
             self.advance();
@@ -635,6 +715,9 @@ pub enum Stmt {
         params: Vec<String>,
         body: Box<Stmt>,
     },
+    Return {
+        value: Option<Expr>,
+    },
 }
 
 /// Expression
@@ -692,6 +775,7 @@ pub enum LoxBinaryOperator {
     And,
     Or,
 }
+
 impl std::fmt::Display for LoxBinaryOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

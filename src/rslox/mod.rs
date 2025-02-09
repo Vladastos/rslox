@@ -175,4 +175,8 @@ pub enum InterpreterError {
 
     #[error("Invalid argument count: {found} expected: {expected}")]
     InvalidArgumentCount { found: usize, expected: usize },
+
+    /// This error is returned when a function returns a value
+    #[error("Return value: {value}")]
+    Return { value: interpreter::LoxValue },
 }
