@@ -4,13 +4,14 @@
 use crate::rslox::builtins::BUILTINS;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
-use log::debug;
+use log::{debug, info};
 use ordered_float::OrderedFloat;
 
 use super::InterpreterError;
-use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
+use crate::rslox::{parser, Lox};
 
 pub struct Interpreter<'a> {
     environment: &'a mut Environment,
@@ -43,6 +44,10 @@ impl Interpreter<'_> {
                 name,
                 initializer.as_ref().map(|expr| expr.clone()),
             ),
+            Stmt::Function { name, params, body } => {
+                self.interpret_function_declaration(name, params, body.clone())?;
+                Ok(())
+            }
             Stmt::Block { statements } => {
                 self.environment.new_scope();
                 self.run(statements)?;
@@ -127,6 +132,38 @@ impl Interpreter<'_> {
             LoxValue::Nil
         };
         self.environment.define(name.to_owned(), value);
+        Ok(())
+    }
+
+    fn interpret_function_declaration(
+        &mut self,
+        name: &str,
+        parameters: &[String],
+        body: Box<parser::Stmt>,
+    ) -> Result<(), InterpreterError> {
+        let function = LoxValue::Callable {
+            name: name.to_owned(),
+            arity: parameters.len(),
+            parameters: parameters.to_vec(),
+            body: Some(body),
+
+            function: |interpreter, arguments, parameters: &[String], body| {
+                interpreter.environment.new_scope();
+
+                for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
+                    interpreter
+                        .environment
+                        .define(parameter.to_owned(), argument.clone());
+                }
+
+                interpreter.interpret_statement(&body.unwrap())?;
+
+                interpreter.environment.restore_scope();
+
+                return Ok(LoxValue::Nil);
+            },
+        };
+        self.environment.define(name.to_owned(), function);
         Ok(())
     }
 
@@ -333,8 +370,6 @@ impl Interpreter<'_> {
             .map(|argument| self.interpret_expression(argument))
             .collect::<Result<Vec<LoxValue>, InterpreterError>>()?;
 
-        debug!("Interpreting call");
-
         return callee.call(self, &arguments);
     }
 }
@@ -393,7 +428,7 @@ impl Environment {
 
 /// The internal representation of a Lox value.
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum LoxValue {
     Number(OrderedFloat<f64>),
     String(String),
@@ -401,9 +436,28 @@ pub enum LoxValue {
     Callable {
         name: String,
         arity: usize,
-        function: fn(&mut Interpreter, &[LoxValue]) -> Result<LoxValue, InterpreterError>,
+        body: Option<Box<parser::Stmt>>,
+        parameters: Vec<String>,
+        function: fn(
+            &mut Interpreter,
+            &[LoxValue],
+            &[String],
+            Option<Box<parser::Stmt>>,
+        ) -> Result<LoxValue, InterpreterError>,
     },
     Nil,
+}
+
+impl PartialEq for LoxValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (LoxValue::Number(left), LoxValue::Number(right)) => left == right,
+            (LoxValue::String(left), LoxValue::String(right)) => left == right,
+            (LoxValue::Boolean(left), LoxValue::Boolean(right)) => left == right,
+            (LoxValue::Nil, LoxValue::Nil) => true,
+            _ => false,
+        }
+    }
 }
 
 impl LoxValue {
@@ -426,15 +480,6 @@ impl LoxValue {
         }
     }
 
-    fn arity(&self) -> usize {
-        match self {
-            LoxValue::Nil => 0,
-            LoxValue::Number(_) => 0,
-            LoxValue::String(_) => 0,
-            LoxValue::Boolean(_) => 0,
-            LoxValue::Callable { arity, .. } => *arity,
-        }
-    }
     fn call(
         &self,
         _interpreter: &mut Interpreter,
@@ -442,7 +487,11 @@ impl LoxValue {
     ) -> Result<LoxValue, InterpreterError> {
         return match self {
             LoxValue::Callable {
-                function, arity, ..
+                function,
+                arity,
+                body,
+                parameters,
+                ..
             } => {
                 if _arguments.len() != *arity {
                     return Err(InterpreterError::InvalidArgumentCount {
@@ -450,7 +499,7 @@ impl LoxValue {
                         found: _arguments.len(),
                     });
                 }
-                function(_interpreter, _arguments)
+                function(_interpreter, _arguments, &parameters, body.clone())
             }
             _ => Err(InterpreterError::NonFunctionCall { name: self.name() }),
         };
@@ -462,8 +511,7 @@ impl std::fmt::Display for LoxValue {
             LoxValue::Number(value) => write!(f, "{}", value),
             LoxValue::String(value) => write!(f, "{}", value),
             LoxValue::Boolean(value) => write!(f, "{}", value),
-            // TODO: change this, it's a temporary solution
-            LoxValue::Callable { name, .. } => write!(f, "{}", name),
+            LoxValue::Callable { name, .. } => write!(f, "<fn {}>", name),
             LoxValue::Nil => write!(f, "nil"),
         }
     }

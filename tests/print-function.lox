@@ -1,0 +1,11 @@
+fun recursive_subtraction(x) {
+    if (x == 0) {
+        print "done!";
+    } else {
+        print "not done";
+        print x;
+        recursive_subtraction(x-1);
+    };
+};
+
+recursive_subtraction(10000);

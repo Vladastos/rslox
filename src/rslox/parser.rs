@@ -2,7 +2,7 @@
 //!  - Add more error types
 //!  - Improve error messages
 
-use log::debug;
+use log::{debug, info};
 use ordered_float::OrderedFloat;
 
 use crate::rslox::scanner;
@@ -50,6 +50,7 @@ impl Parser {
     fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
             scanner::TokenType::Var => self.parse_var_declaration()?,
+            scanner::TokenType::Fun => self.parse_fun_declaration()?,
             _ => self.parse_statement()?,
         };
         self.expect_token(scanner::TokenType::Semicolon)?;
@@ -58,8 +59,8 @@ impl Parser {
 
     /// Parses a variable declaration.
     fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
-        let token = self.expect_token(scanner::TokenType::Var)?;
-        self.expect_token(scanner::TokenType::Identifier)?;
+        self.expect_token(scanner::TokenType::Var)?;
+        let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
 
         let initializer = if self.check(scanner::TokenType::Equal) {
             self.advance();
@@ -68,10 +69,38 @@ impl Parser {
             None
         };
 
-        Ok(Stmt::VarDeclaration {
-            name: token.lexeme,
-            initializer,
-        })
+        Ok(Stmt::VarDeclaration { name, initializer })
+    }
+
+    /// Parses a function declaration
+    fn parse_fun_declaration(&mut self) -> Result<Stmt, ParserError> {
+        self.expect_token(scanner::TokenType::Fun)?;
+        let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
+        self.expect_token(scanner::TokenType::LeftParen)?;
+        let params = self.parse_fun_params();
+        self.expect_token(scanner::TokenType::RightParen)?;
+        let body = Box::from(self.parse_block_statement()?);
+        Ok(Stmt::Function { name, params, body })
+    }
+
+    fn parse_fun_params(&mut self) -> Vec<String> {
+        let mut params: Vec<String> = Vec::new();
+        if !self.check(scanner::TokenType::RightParen) {
+            params.push(
+                self.expect_token(scanner::TokenType::Identifier)
+                    .unwrap()
+                    .lexeme,
+            );
+            while self.check(scanner::TokenType::Comma) {
+                self.advance();
+                params.push(
+                    self.expect_token(scanner::TokenType::Identifier)
+                        .unwrap()
+                        .lexeme,
+                );
+            }
+        }
+        params
     }
 
     /// Parses a statement.
@@ -494,12 +523,14 @@ impl Parser {
         }
         self.peek().token_type == token_type
     }
-    /// Consumes the current token if it matches the given `token_type`.
+    /// Consumes the current token if it matches the given `token_type` and returns the token that comes after it.
     /// Returns an error if the current token does not match the given `token_type`.
     fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<Token, ParserError> {
+        //! TODO: Should return the matched token instead
         if self.peek().token_type == token_type {
+            let token = self.peek().clone();
             self.advance();
-            return Ok(self.peek().clone());
+            return Ok(token);
         }
         let &scanner::Token {
             token_type: found,
@@ -597,6 +628,11 @@ pub enum Stmt {
     },
     While {
         condition: Expr,
+        body: Box<Stmt>,
+    },
+    Function {
+        name: String,
+        params: Vec<String>,
         body: Box<Stmt>,
     },
 }

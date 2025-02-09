@@ -10,7 +10,9 @@ pub static BUILTINS: LazyLock<HashMap<String, LoxValue>> = LazyLock::new(|| {
         LoxValue::Callable {
             name: "clock".to_string(),
             arity: 0,
-            function: |_, _| {
+            parameters: vec![],
+            body: None,
+            function: |_, _, _, _| {
                 Ok(LoxValue::Number(OrderedFloat::from(
                     std::time::SystemTime::now()
                         .duration_since(std::time::SystemTime::UNIX_EPOCH)

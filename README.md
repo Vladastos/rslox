@@ -22,9 +22,13 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >---
 > **Program** -> Declaration\* EOF
 >
->**Declaration** -> VarDeclaration | Statement
+>**Declaration** -> VarDeclaration | FunDeclaration | Statement
 >
 >**VarDeclaration** -> "var" *IDENTIFIER* ( "=" Expression )? ;
+>
+>**FunDeclaration** -> "fun" *IDENTIFIER* "(" Parameters? ")" Block 
+>
+>**Parameters** -> *IDENTIFIER* ( "," *IDENTIFIER* )\*
 >
 >**Statement** -> ExpressionStatement | PrintStatement | WhileStatement | IfStatement | ForStatement | Block
 >
