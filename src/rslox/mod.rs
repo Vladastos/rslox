@@ -1,3 +1,4 @@
+mod builtins;
 mod interpreter;
 mod parser;
 mod scanner;
@@ -71,6 +72,10 @@ impl Lox {
         Ok(())
     }
 
+    /// Parses the source code, and returns the result as an `Ok(())` if successful.
+    ///
+    /// Used for testing code without running it.
+    #[allow(dead_code)]
     pub fn parse(&mut self, source: &str) -> Result<(), LoxError> {
         parser::Parser::new(scanner::Scanner::new(source).scan_tokens()?)
             .parse()
@@ -138,6 +143,9 @@ pub enum ParserError {
 
     #[error("Unterminated block [line {line} column {column}]")]
     UnterminatedBlock { line: usize, column: usize },
+
+    #[error("Too many arguments [line {line} column {column}]")]
+    TooManyArguments { line: usize, column: usize },
 }
 
 #[derive(Error, Debug)]
@@ -161,4 +169,10 @@ pub enum InterpreterError {
     UndefinedVariable { name: String },
     #[error("Division by zero")]
     DivisionByZero,
+
+    #[error("Cannot call non-function: {name}")]
+    NonFunctionCall { name: String },
+
+    #[error("Invalid argument count: {found} expected: {expected}")]
+    InvalidArgumentCount { found: usize, expected: usize },
 }

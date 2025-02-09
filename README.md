@@ -54,7 +54,11 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**MultiplicationExpression** -> UnaryExpression ( ( "\*" | "/" )UnaryExpression )\*
 >
->**UnaryExpression** -> ( "!" | "-" ) UnaryExpression | PrimaryExpression
+>**UnaryExpression** -> ( "!" | "-" ) UnaryExpression | CallExpression
+>
+>**CallExpression** -> PrimaryExpression ( "(" Arguments? ")" )
+>
+>**Arguments** -> Expression ( "," Expression )\*
 >
 >**PrimaryExpression** -> *NUMBER* | *STRING* | "true" | "false" | "nil" | "(" Expression ")" | *IDENTIFIER*
 >

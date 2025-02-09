@@ -1,8 +1,11 @@
 //! TODO:
 //!  - Change the return type of the `name()` method of `LoxValue` to `&str`.
 
+use crate::rslox::builtins::BUILTINS;
+
 use std::collections::HashMap;
 
+use log::debug;
 use ordered_float::OrderedFloat;
 
 use super::InterpreterError;
@@ -109,6 +112,7 @@ impl Interpreter<'_> {
                     })
                 }
             }
+            Expr::Call { callee, arguments } => return self.interpret_call(callee, arguments),
         }
     }
 
@@ -316,6 +320,23 @@ impl Interpreter<'_> {
             parser::LoxUnaryOperator::Bang => Ok(LoxValue::Boolean(!right.is_truthy())),
         }
     }
+
+    fn interpret_call(
+        &mut self,
+        callee: &parser::Expr,
+        arguments: &[parser::Expr],
+    ) -> Result<LoxValue, InterpreterError> {
+        let callee = self.interpret_expression(callee)?;
+
+        let arguments = arguments
+            .iter()
+            .map(|argument| self.interpret_expression(argument))
+            .collect::<Result<Vec<LoxValue>, InterpreterError>>()?;
+
+        debug!("Interpreting call");
+
+        return callee.call(self, &arguments);
+    }
 }
 
 /// An environment is a mapping from variable names to values.
@@ -329,7 +350,8 @@ impl Environment {
     pub fn new() -> Environment {
         Environment {
             parent: None,
-            values: HashMap::new(),
+            // TODO: Initialize with builtins
+            values: (*BUILTINS).clone(),
         }
     }
 
@@ -376,18 +398,12 @@ pub enum LoxValue {
     Number(OrderedFloat<f64>),
     String(String),
     Boolean(bool),
+    Callable {
+        name: String,
+        arity: usize,
+        function: fn(&mut Interpreter, &[LoxValue]) -> Result<LoxValue, InterpreterError>,
+    },
     Nil,
-}
-
-impl std::fmt::Display for LoxValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            LoxValue::Number(value) => write!(f, "{value}"),
-            LoxValue::String(value) => write!(f, "{value}"),
-            LoxValue::Boolean(value) => write!(f, "{value}"),
-            LoxValue::Nil => write!(f, "nil"),
-        }
-    }
 }
 
 impl LoxValue {
@@ -405,7 +421,50 @@ impl LoxValue {
             LoxValue::Number(_) => "number".to_string(),
             LoxValue::String(_) => "string".to_string(),
             LoxValue::Boolean(_) => "boolean".to_string(),
+            LoxValue::Callable { .. } => "function".to_string(),
             LoxValue::Nil => "nil".to_string(),
+        }
+    }
+
+    fn arity(&self) -> usize {
+        match self {
+            LoxValue::Nil => 0,
+            LoxValue::Number(_) => 0,
+            LoxValue::String(_) => 0,
+            LoxValue::Boolean(_) => 0,
+            LoxValue::Callable { arity, .. } => *arity,
+        }
+    }
+    fn call(
+        &self,
+        _interpreter: &mut Interpreter,
+        _arguments: &[LoxValue],
+    ) -> Result<LoxValue, InterpreterError> {
+        return match self {
+            LoxValue::Callable {
+                function, arity, ..
+            } => {
+                if _arguments.len() != *arity {
+                    return Err(InterpreterError::InvalidArgumentCount {
+                        expected: *arity,
+                        found: _arguments.len(),
+                    });
+                }
+                function(_interpreter, _arguments)
+            }
+            _ => Err(InterpreterError::NonFunctionCall { name: self.name() }),
+        };
+    }
+}
+impl std::fmt::Display for LoxValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LoxValue::Number(value) => write!(f, "{}", value),
+            LoxValue::String(value) => write!(f, "{}", value),
+            LoxValue::Boolean(value) => write!(f, "{}", value),
+            // TODO: change this, it's a temporary solution
+            LoxValue::Callable { name, .. } => write!(f, "{}", name),
+            LoxValue::Nil => write!(f, "nil"),
         }
     }
 }

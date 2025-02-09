@@ -61,7 +61,7 @@ impl Parser {
         let token = self.expect_token(scanner::TokenType::Var)?;
         self.expect_token(scanner::TokenType::Identifier)?;
 
-        let initializer = if self.peek().token_type == scanner::TokenType::Equal {
+        let initializer = if self.check(scanner::TokenType::Equal) {
             self.advance();
             Some(self.parse_expression()?)
         } else {
@@ -127,7 +127,7 @@ impl Parser {
 
         let initializer = if self.match_token(scanner::TokenType::Semicolon).is_some() {
             None
-        } else if self.peek().token_type == scanner::TokenType::Var {
+        } else if self.check(scanner::TokenType::Var) {
             Some(Box::from(self.parse_var_declaration()?))
         } else {
             Some(Box::from(self.parse_expression_statement()?))
@@ -207,7 +207,7 @@ impl Parser {
     fn parse_block_statement(&mut self) -> Result<Stmt, ParserError> {
         self.advance();
         let mut statements: Vec<Stmt> = Vec::new();
-        while self.peek().token_type != scanner::TokenType::RightBrace {
+        while !self.check(scanner::TokenType::RightBrace) {
             if self.is_at_end() {
                 return Err(ParserError::UnterminatedBlock {
                     line: self.peek().line,
@@ -378,7 +378,35 @@ impl Parser {
                 right: Box::new(right),
             });
         }
-        self.parse_primary()
+        self.parse_call()
+    }
+
+    /// Parses a call expression.
+    ///
+    /// This is either a primary expression, or a call expression.
+    fn parse_call(&mut self) -> Result<Expr, ParserError> {
+        let expr = self.parse_primary()?;
+        if self.match_token(scanner::TokenType::LeftParen).is_some() {
+            let mut arguments = Vec::new();
+            if !self.check(scanner::TokenType::RightParen) {
+                arguments.push(self.parse_expression()?);
+                while self.match_token(scanner::TokenType::Comma).is_some() {
+                    arguments.push(self.parse_expression()?);
+                }
+            }
+            self.expect_token(scanner::TokenType::RightParen)?;
+            if arguments.len() > 255 {
+                return Err(ParserError::TooManyArguments {
+                    line: self.peek().line,
+                    column: self.peek().column,
+                });
+            }
+            return Ok(Expr::Call {
+                callee: Box::new(expr),
+                arguments,
+            });
+        }
+        Ok(expr)
     }
 
     /// Parses a primary expression.
@@ -459,6 +487,13 @@ impl Parser {
         &self.tokens[self.current]
     }
 
+    /// Returns true if the current token matches the given `token_type`, false otherwise. Does not consume the token.
+    fn check(&self, token_type: scanner::TokenType) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        self.peek().token_type == token_type
+    }
     /// Consumes the current token if it matches the given `token_type`.
     /// Returns an error if the current token does not match the given `token_type`.
     fn expect_token(&mut self, token_type: scanner::TokenType) -> Result<Token, ParserError> {
@@ -518,7 +553,7 @@ impl Parser {
 
         self.advance();
         while !self.is_at_end() {
-            if self.peek().token_type == scanner::TokenType::Semicolon {
+            if self.check(scanner::TokenType::Semicolon) {
                 self.advance();
                 return;
             }
@@ -591,6 +626,10 @@ pub enum Expr {
     Assignment {
         name: String,
         value: Box<Expr>,
+    },
+    Call {
+        callee: Box<Expr>,
+        arguments: Vec<Expr>,
     },
 }
 
