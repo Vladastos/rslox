@@ -5,6 +5,7 @@ use crate::rslox::builtins::BUILTINS;
 
 use std::collections::HashMap;
 
+use log::debug;
 use ordered_float::OrderedFloat;
 
 use super::InterpreterError;
@@ -253,9 +254,13 @@ impl Interpreter<'_> {
                         .define(parameter.to_owned(), argument.clone());
                 }
 
-                interpreter.interpret_statement(&body.unwrap())?;
+                let result = interpreter.interpret_statement(&body.unwrap());
 
                 interpreter.environment.restore_scope();
+
+                if let Err(error) = result {
+                    return Err(error);
+                }
 
                 return Ok(LoxValue::Nil);
             },
@@ -542,7 +547,6 @@ impl Environment {
     pub fn new() -> Environment {
         Environment {
             parent: None,
-            // TODO: Initialize with builtins
             values: (*BUILTINS).clone(),
         }
     }
@@ -572,14 +576,18 @@ impl Environment {
     }
 
     pub fn new_scope(&mut self) {
+        debug!("Creating new scope");
         self.parent = Some(Box::new(self.clone()));
         self.values = HashMap::new();
     }
     pub fn restore_scope(&mut self) {
+        debug!("Restoring scope");
+        debug!("Environment: {:#?}", self);
         assert!(self.parent.is_some());
         let parent = self.parent.take().unwrap();
         self.values = parent.values;
         self.parent = parent.parent;
+        debug!("Environment after restore: {:#?}", self);
     }
 }
 
