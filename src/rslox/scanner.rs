@@ -351,11 +351,7 @@ impl Scanner {
     /// otherwise returns a `ScannerError`.
     fn scan_identifier(&mut self, c: char) -> Result<String, ScannerError> {
         let mut result = String::from(c);
-        while self.peek().is_ascii_alphanumeric()
-            || self.peek() == '_'
-            || self.peek() == '-'
-            || self.peek() == ':'
-        {
+        while self.peek().is_ascii_alphanumeric() || self.peek() == '_' || self.peek() == ':' {
             result.push(self.advance());
         }
         Ok(result)
