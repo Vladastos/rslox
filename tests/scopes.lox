@@ -1,12 +1,5 @@
-fun get_first_callback(){
-    
-    let inner_value = 0;
-    let a = 123;
-
-    
-    return;
+fun sum(a,b){
+    return a + b;
 };
 
-let get_second_callback = get_first_callback();
-
-print inner_value;
+print sum(1,2);

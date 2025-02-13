@@ -214,9 +214,9 @@ impl Interpreter<'_> {
         Ok(())
     }
 
-    /// Interprets a function declaration and defines a callable function in the current environment.
+    /// Interprets a function declaration and defines a ClojureFunction function in the current environment.
     ///
-    /// This function creates a new callable `LoxValue` from the given function name, parameters,
+    /// This function creates a new ClojureFunction `LoxValue` from the given function name, parameters,
     /// and body. It then defines this function in the current environment, making it available
     /// for invocation in the interpreted Lox code.
     ///
@@ -236,34 +236,10 @@ impl Interpreter<'_> {
         parameters: &[String],
         body: Box<parser::Stmt>,
     ) -> Result<(), InterpreterError> {
-        let function = LoxValue::Callable {
+        let function = LoxValue::ClojureFunction {
             name: name.to_owned(),
-            arity: parameters.len(),
             parameters: parameters.to_vec(),
             body: Some(body),
-
-            // This is the function that is called when the function is invoked
-            // with the given arguments. It creates a new scope, defines the
-            // parameters as local variables, and interprets the body of the function.
-            function: |interpreter, arguments, parameters: &[String], body| {
-                interpreter.environment.new_scope();
-
-                for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
-                    interpreter
-                        .environment
-                        .define(parameter.to_owned(), argument.clone());
-                }
-
-                let result = interpreter.interpret_statement(&body.unwrap());
-
-                interpreter.environment.restore_scope();
-
-                if let Err(error) = result {
-                    return Err(error);
-                }
-
-                return Ok(LoxValue::Nil);
-            },
         };
         self.environment.define(name.to_owned(), function);
         Ok(())
@@ -598,17 +574,15 @@ pub enum LoxValue {
     Number(OrderedFloat<f64>),
     String(String),
     Boolean(bool),
-    Callable {
+    ClojureFunction {
         name: String,
-        arity: usize,
         body: Option<Box<parser::Stmt>>,
         parameters: Vec<String>,
-        function: fn(
-            &mut Interpreter,
-            &[LoxValue],
-            &[String],
-            Option<Box<parser::Stmt>>,
-        ) -> Result<LoxValue, InterpreterError>,
+    },
+    BuiltinFunction {
+        name: String,
+        parameters: Vec<String>,
+        function: fn(&mut Interpreter, &[LoxValue]) -> Result<LoxValue, InterpreterError>,
     },
     Nil,
 }
@@ -640,74 +614,75 @@ impl LoxValue {
             LoxValue::Number(_) => "number".to_string(),
             LoxValue::String(_) => "string".to_string(),
             LoxValue::Boolean(_) => "boolean".to_string(),
-            LoxValue::Callable { .. } => "function".to_string(),
+            LoxValue::ClojureFunction { .. } => "function".to_string(),
+            LoxValue::BuiltinFunction { .. } => "function".to_string(),
             LoxValue::Nil => "nil".to_string(),
         }
     }
 
-    /// Calls a `LoxValue` if it is a callable function, passing the provided arguments.
-    ///
-    /// This method attempts to invoke the function represented by this `LoxValue`
-    /// if it is of the `Callable` variant. It checks if the number of provided
-    /// arguments matches the function's arity and then executes the function
-    /// using the given interpreter context.
-    ///
-    /// # Arguments
-    ///
-    /// * `_interpreter` - The interpreter instance used to execute the function.
-    /// * `_arguments` - A slice of `LoxValue` representing the arguments to be
-    ///   passed to the function.
-    ///
-    /// # Returns
-    ///
-    /// * `Result<LoxValue, InterpreterError>` - Returns the result of the function
-    /// call if successful. If the `LoxValue` is not callable, returns an
-    /// `InterpreterError::NonFunctionCall`. If the argument count is incorrect,
-    /// returns an `InterpreterError::InvalidArgumentCount`. If the function
-    /// terminates with a return value, returns that value.
-
     fn call(
         &self,
-        _interpreter: &mut Interpreter,
-        _arguments: &[LoxValue],
+        interpreter: &mut Interpreter,
+        arguments: &[LoxValue],
     ) -> Result<LoxValue, InterpreterError> {
         return match self {
-            LoxValue::Callable {
-                function,
-                arity,
-                body,
-                parameters,
-                ..
+            LoxValue::ClojureFunction {
+                body, parameters, ..
             } => {
-                if _arguments.len() != *arity {
+                if arguments.len() != parameters.len() {
                     return Err(InterpreterError::InvalidArgumentCount {
-                        expected: *arity,
-                        found: _arguments.len(),
+                        expected: parameters.len(),
+                        found: arguments.len(),
                     });
                 }
 
-                let result = function(_interpreter, _arguments, &parameters, body.clone());
-                match result {
-                    Ok(value) => Ok(value),
-                    Err(error) => match error {
-                        InterpreterError::Return { value } => Ok(value),
-                        _ => {
-                            return Err(error);
-                        }
-                    },
+                interpreter.environment.new_scope();
+
+                for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
+                    interpreter
+                        .environment
+                        .define(parameter.to_owned(), argument.clone());
                 }
+
+                let interpreter_result = interpreter.interpret_statement(&body.clone().unwrap());
+
+                let return_value: Result<LoxValue, InterpreterError> = match interpreter_result {
+                    Ok(_value) => Ok(LoxValue::Nil),
+                    Err(InterpreterError::Return { value }) => Ok(value),
+                    Err(error) => Err(error),
+                };
+
+                interpreter.environment.restore_scope();
+
+                return_value
+            }
+            LoxValue::BuiltinFunction {
+                name,
+                parameters,
+                function,
+            } => {
+                if arguments.len() != parameters.len() {
+                    return Err(InterpreterError::InvalidArgumentCount {
+                        expected: parameters.len(),
+                        found: arguments.len(),
+                    });
+                }
+
+                function(interpreter, arguments)
             }
             _ => Err(InterpreterError::NonFunctionCall { name: self.name() }),
         };
     }
 }
+
 impl std::fmt::Display for LoxValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LoxValue::Number(value) => write!(f, "{}", value),
             LoxValue::String(value) => write!(f, "{}", value),
             LoxValue::Boolean(value) => write!(f, "{}", value),
-            LoxValue::Callable { name, .. } => write!(f, "<fn {}>", name),
+            LoxValue::ClojureFunction { name, .. } => write!(f, "<fn {}>", name),
+            LoxValue::BuiltinFunction { name, .. } => write!(f, "<fn {}>", name),
             LoxValue::Nil => write!(f, "nil"),
         }
     }

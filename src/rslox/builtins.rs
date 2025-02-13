@@ -12,16 +12,14 @@ use super::interpreter::LoxValue;
 /// Used to define built-in functions in the interpreter.
 pub static BUILTINS: LazyLock<HashMap<String, LoxValue>> = LazyLock::new(|| {
     HashMap::from([(
-        "std::clock".to_string(),
-        LoxValue::Callable {
-            name: "std::clock".to_string(),
-            arity: 0,
+        "clock".to_string(),
+        LoxValue::BuiltinFunction {
+            name: "clock".to_string(),
             parameters: vec![],
-            body: None,
-            function: |_, _, _, _| {
+            function: |_, _| {
                 Ok(LoxValue::Number(OrderedFloat::from(
                     std::time::SystemTime::now()
-                        .duration_since(std::time::SystemTime::UNIX_EPOCH)
+                        .duration_since(std::time::UNIX_EPOCH)
                         .unwrap()
                         .as_millis() as f64,
                 )))
