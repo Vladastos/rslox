@@ -146,6 +146,13 @@ pub enum ParserError {
 
     #[error("Too many arguments [line {line} column {column}]")]
     TooManyArguments { line: usize, column: usize },
+
+    #[error("Unitialized variable {name} [line {line} column {column}]")]
+    UninitializedVariable {
+        name: String,
+        line: usize,
+        column: usize,
+    },
 }
 
 #[derive(Error, Debug)]

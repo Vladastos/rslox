@@ -23,7 +23,8 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
         ("super", TokenType::Super),
         ("this", TokenType::This),
         ("true", TokenType::True),
-        ("let", TokenType::Var),
+        ("let", TokenType::Let),
+        ("mut", TokenType::Mut),
         ("while", TokenType::While),
     ])
 });
@@ -365,6 +366,7 @@ impl Scanner {
     ///
     /// Returns `Ok(string)` containing the scanned string if successful, otherwise returns a `ScannerError`.
     fn scan_string(&mut self) -> Result<String, ScannerError> {
+        //! TODO: escape sequences
         let mut result = String::new();
         while self.peek() != '"' && !self.is_at_end() {
             result.push(self.advance());
@@ -524,7 +526,8 @@ pub enum TokenType {
     Super,
     This,
     True,
-    Var,
+    Let,
+    Mut,
     While,
     Eof,
 }
@@ -568,7 +571,8 @@ impl std::fmt::Display for TokenType {
             TokenType::Super => "super",
             TokenType::This => "this",
             TokenType::True => "true",
-            TokenType::Var => "var",
+            TokenType::Let => "let",
+            TokenType::Mut => "mut",
             TokenType::While => "while",
             TokenType::Eof => "Eof",
         };

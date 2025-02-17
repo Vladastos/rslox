@@ -48,7 +48,8 @@ impl Parser {
     /// Expects a semicolon at the end.
     fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
-            scanner::TokenType::Var => self.parse_var_declaration()?,
+            scanner::TokenType::Let => self.parse_const_declaration()?,
+            scanner::TokenType::Mut => self.parse_mut_declaration()?,
             scanner::TokenType::Fun => self.parse_fun_declaration()?,
             _ => self.parse_statement()?,
         };
@@ -61,9 +62,9 @@ impl Parser {
     /// Expects the current token to be the 'var' keyword.
     /// Parses the variable name and optional initializer.
     ///
-    /// Returns a `Stmt::VarDeclaration` with the parsed variable name and initializer.
-    fn parse_var_declaration(&mut self) -> Result<Stmt, ParserError> {
-        self.expect_token(scanner::TokenType::Var)?;
+    /// Returns a `Stmt::ConstDeclaration` with the parsed variable name and initializer.
+    fn parse_mut_declaration(&mut self) -> Result<Stmt, ParserError> {
+        self.expect_token(scanner::TokenType::Mut)?;
         let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
 
         let initializer = if self.check(scanner::TokenType::Equal) {
@@ -73,7 +74,32 @@ impl Parser {
             None
         };
 
-        Ok(Stmt::VarDeclaration { name, initializer })
+        Ok(Stmt::MutDeclaration { name, initializer })
+    }
+
+    fn parse_const_declaration(&mut self) -> Result<Stmt, ParserError> {
+        self.expect_token(scanner::TokenType::Let)?;
+        let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
+
+        let initializer = if self.check(scanner::TokenType::Equal) {
+            self.advance();
+            Some(self.parse_expression()?)
+        } else {
+            None
+        };
+
+        if initializer.is_none() {
+            return Err(ParserError::UninitializedVariable {
+                name: name.to_owned(),
+                line: self.peek().line,
+                column: self.peek().column,
+            });
+        }
+
+        Ok(Stmt::ConstDeclaration {
+            name,
+            initializer: initializer.unwrap(),
+        })
     }
 
     /// Parses a function declaration.
@@ -199,8 +225,8 @@ impl Parser {
 
         let initializer = if self.match_token(scanner::TokenType::Semicolon).is_some() {
             None
-        } else if self.check(scanner::TokenType::Var) {
-            Some(Box::from(self.parse_var_declaration()?))
+        } else if self.check(scanner::TokenType::Let) {
+            Some(Box::from(self.parse_mut_declaration()?))
         } else {
             Some(Box::from(self.parse_expression_statement()?))
         };
@@ -671,7 +697,7 @@ impl Parser {
             match self.peek().token_type {
                 scanner::TokenType::Class
                 | scanner::TokenType::Fun
-                | scanner::TokenType::Var
+                | scanner::TokenType::Let
                 | scanner::TokenType::For
                 | scanner::TokenType::If
                 | scanner::TokenType::While
@@ -694,7 +720,11 @@ pub enum Stmt {
     Print {
         expression: Expr,
     },
-    VarDeclaration {
+    ConstDeclaration {
+        name: String,
+        initializer: Expr,
+    },
+    MutDeclaration {
         name: String,
         initializer: Option<Expr>,
     },

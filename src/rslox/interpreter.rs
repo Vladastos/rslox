@@ -72,10 +72,13 @@ impl Interpreter<'_> {
                 println!("{}", value);
                 Ok(())
             }
-            Stmt::VarDeclaration { name, initializer } => self.interpret_variable_declaration(
+            Stmt::MutDeclaration { name, initializer } => self.interpret_variable_declaration(
                 name,
                 initializer.as_ref().map(|expr| expr.clone()),
             ),
+            Stmt::ConstDeclaration { name, initializer } => {
+                self.interpret_constant_declaration(name, Some(initializer.clone()))
+            }
             Stmt::Function { name, params, body } => {
                 self.interpret_function_declaration(name, params, body.clone())?;
                 Ok(())
@@ -211,6 +214,18 @@ impl Interpreter<'_> {
             LoxValue::Nil
         };
         self.environment.define(name.to_owned(), value);
+        Ok(())
+    }
+
+    fn interpret_constant_declaration(
+        &mut self,
+        name: &str,
+        initializer: Option<parser::Expr>,
+    ) -> Result<(), InterpreterError> {
+        let value = self.interpret_expression(&initializer.unwrap())?;
+
+        self.environment.define(name.to_owned(), value);
+
         Ok(())
     }
 
@@ -657,9 +672,9 @@ impl LoxValue {
                 return_value
             }
             LoxValue::BuiltinFunction {
-                name,
                 parameters,
                 function,
+                ..
             } => {
                 if arguments.len() != parameters.len() {
                     return Err(InterpreterError::InvalidArgumentCount {
