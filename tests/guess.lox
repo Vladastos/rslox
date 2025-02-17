@@ -6,21 +6,21 @@ let SEED = 9321240;
 // Your guess (between 0 and 100)
 let GUESS = 50;
 
-let n;
+mut n;
 
 // RNG
 {
     let ITERATIONS = 10;
 
-    let m = 4294967296;
-    let a = 1664525;
-    let c = 1013904223;
+    mut m = 4294967296;
+    mut a = 1664525;
+    mut c = 1013904223;
 
     n = SEED;
 
-    let i = 0;
+    mut i = 0;
     while ( i <= ITERATIONS) {
-        let next;
+        mut next;
         if ( i < ITERATIONS ) {
             next = a * n + c;
         } else {
@@ -28,8 +28,8 @@ let n;
             next = n;
         };
 
-        let m_multiple = 0;
-        let next_addend = m;
+        mut m_multiple = 0;
+        mut next_addend = m;
         while ( m_multiple + next_addend <= next ) {
             while ( m_multiple + next_addend <= next) {
                 next_addend = next_addend * 2;

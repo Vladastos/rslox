@@ -225,7 +225,7 @@ impl Parser {
 
         let initializer = if self.match_token(scanner::TokenType::Semicolon).is_some() {
             None
-        } else if self.check(scanner::TokenType::Let) {
+        } else if self.check(scanner::TokenType::Mut) {
             Some(Box::from(self.parse_mut_declaration()?))
         } else {
             Some(Box::from(self.parse_expression_statement()?))

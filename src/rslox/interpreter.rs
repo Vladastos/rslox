@@ -5,7 +5,6 @@ use crate::rslox::builtins::BUILTINS;
 
 use std::collections::HashMap;
 
-use log::debug;
 use ordered_float::OrderedFloat;
 
 use super::InterpreterError;
@@ -175,20 +174,14 @@ impl Interpreter<'_> {
             Expr::Variable { name } => self.interpret_variable(name),
             Expr::Assignment { name, value } => {
                 let value = self.interpret_expression(value)?;
-                let value = self.environment.assign(name, value.clone());
-                if let Some(value) = value {
-                    Ok(value)
-                } else {
-                    Err(InterpreterError::UndefinedVariable {
-                        name: name.to_owned(),
-                    })
-                }
+                let value = self.environment.assign(name, value.clone())?;
+                Ok(value)
             }
             Expr::Call { callee, arguments } => return self.interpret_call(callee, arguments),
         }
     }
 
-    /// Defines a variable in the current environment.
+    /// defines a variable in the current environment.
     ///
     /// If the variable declaration has an initializer, this function evaluates the initializer
     /// expression and assigns the result to the variable.
@@ -213,7 +206,7 @@ impl Interpreter<'_> {
         } else {
             LoxValue::Nil
         };
-        self.environment.define(name.to_owned(), value);
+        self.environment.define_mutable(name.to_owned(), value);
         Ok(())
     }
 
@@ -224,7 +217,7 @@ impl Interpreter<'_> {
     ) -> Result<(), InterpreterError> {
         let value = self.interpret_expression(&initializer.unwrap())?;
 
-        self.environment.define(name.to_owned(), value);
+        self.environment.define_constant(name.to_owned(), value);
 
         Ok(())
     }
@@ -256,7 +249,7 @@ impl Interpreter<'_> {
             parameters: parameters.to_vec(),
             body: Some(body),
         };
-        self.environment.define(name.to_owned(), function);
+        self.environment.define_constant(name.to_owned(), function);
         Ok(())
     }
 
@@ -531,7 +524,7 @@ impl Interpreter<'_> {
 #[derive(Debug, Clone)]
 pub struct Environment {
     parent: Option<Box<Environment>>,
-    values: HashMap<String, LoxValue>,
+    values: HashMap<String, LoxValueType>,
 }
 
 impl Environment {
@@ -542,13 +535,20 @@ impl Environment {
         }
     }
 
-    pub fn define(&mut self, name: String, value: LoxValue) {
-        self.values.insert(name, value);
+    pub fn define_constant(&mut self, name: String, value: LoxValue) {
+        self.values.insert(name, LoxValueType::Constant(value));
+    }
+
+    pub fn define_mutable(&mut self, name: String, value: LoxValue) {
+        self.values.insert(name, LoxValueType::Mutable(value));
     }
 
     pub fn get(&self, name: &str) -> Option<LoxValue> {
         match self.values.get(name) {
-            Some(value) => Some(value.clone()),
+            Some(value) => Some(match value {
+                LoxValueType::Constant(value) => value.clone(),
+                LoxValueType::Mutable(value) => value.clone(),
+            }),
             None => match &self.parent {
                 Some(parent) => parent.get(name),
                 None => None,
@@ -556,34 +556,51 @@ impl Environment {
         }
     }
 
-    pub fn assign(&mut self, name: &str, new_value: LoxValue) -> Option<LoxValue> {
+    pub fn assign(
+        &mut self,
+        name: &str,
+        new_value: LoxValue,
+    ) -> Result<LoxValue, InterpreterError> {
         match self.values.get_mut(name) {
-            Some(value) => Some(std::mem::replace(value, new_value.clone())),
+            Some(value) => match value {
+                LoxValueType::Constant(_) => Err(InterpreterError::CannotAssingnToConstant {
+                    name: name.to_string(),
+                }),
+                LoxValueType::Mutable(value) => {
+                    *value = new_value.clone();
+                    Ok(new_value)
+                }
+            },
             None => match &mut self.parent {
                 Some(parent) => parent.assign(name, new_value),
-                None => None,
+                None => Err(InterpreterError::UndefinedVariable {
+                    name: name.to_string(),
+                }),
             },
         }
     }
 
     pub fn new_scope(&mut self) {
-        debug!("Creating new scope");
         self.parent = Some(Box::new(self.clone()));
         self.values = HashMap::new();
     }
     pub fn restore_scope(&mut self) {
-        debug!("Restoring scope");
-        debug!("Environment: {:#?}", self);
         assert!(self.parent.is_some());
         let parent = self.parent.take().unwrap();
         self.values = parent.values;
         self.parent = parent.parent;
-        debug!("Environment after restore: {:#?}", self);
     }
 }
 
-/// The internal representation of a Lox value.
+/// The type of a Lox value.
+/// Either a constant value or a mutable value.
+#[derive(Debug, Clone)]
+pub enum LoxValueType {
+    Constant(LoxValue),
+    Mutable(LoxValue),
+}
 
+/// The internal representation of a Lox value.
 #[derive(Debug, Clone)]
 pub enum LoxValue {
     Number(OrderedFloat<f64>),
@@ -656,7 +673,7 @@ impl LoxValue {
                 for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
                     interpreter
                         .environment
-                        .define(parameter.to_owned(), argument.clone());
+                        .define_constant(parameter.to_owned(), argument.clone());
                 }
 
                 let interpreter_result = interpreter.interpret_statement(&body.clone().unwrap());

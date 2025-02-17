@@ -4,12 +4,12 @@ let END = 100;
 
 print 2;
 
-let i = 3;
+mut i = 3;
 while (i <= END) {
-    let j = 3;
-    let prime = true;
+    mut j = 3;
+    mut prime = true;
     while (prime && j * j <= i) {
-        let p = j;
+        mut p = j;
         while ( p < i) {
             p = p + j;
         };

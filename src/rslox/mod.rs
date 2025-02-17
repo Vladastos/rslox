@@ -12,7 +12,7 @@ use std::{
 };
 
 use interpreter::Environment;
-use log::{debug, error};
+use log::error;
 use scanner::TokenType;
 use thiserror::Error;
 
@@ -59,12 +59,10 @@ impl Lox {
 
     fn run(&mut self, source: &str, environment: &mut Environment) -> Result<(), LoxError> {
         // Scan the source code into tokens
-        debug!("Scanning source code");
         let tokens = scanner::Scanner::new(source).scan_tokens()?;
 
         // Parse the tokens
         let parse_result = parser::Parser::new(tokens).parse()?;
-        debug!("Parsed statements: {:#?}", parse_result);
 
         // Run the statements
         interpreter::Interpreter::new(environment).run(&parse_result)?;
@@ -179,6 +177,8 @@ pub enum InterpreterError {
 
     #[error("Cannot call non-function: {name}")]
     NonFunctionCall { name: String },
+    #[error("Cannot assign to constant: {name}")]
+    CannotAssingnToConstant { name: String },
 
     #[error("Invalid argument count: {found} expected: {expected}")]
     InvalidArgumentCount { found: usize, expected: usize },
