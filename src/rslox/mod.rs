@@ -1,6 +1,7 @@
 mod builtins;
 mod interpreter;
 mod parser;
+mod resolver;
 mod scanner;
 
 #[cfg(test)]
@@ -64,6 +65,9 @@ impl Lox {
         // Parse the tokens
         let parse_result = parser::Parser::new(tokens).parse()?;
 
+        // Resolve declarations
+        resolver::Resolver::new(environment).resolve(&parse_result)?;
+
         // Run the statements
         interpreter::Interpreter::new(environment).run(&parse_result)?;
 
@@ -92,6 +96,7 @@ pub enum LoxError {
         #[source]
         source: std::io::Error,
     },
+
     #[error("Syntax error: {}", _0)]
     ScannerError(
         #[source]
@@ -101,12 +106,17 @@ pub enum LoxError {
     // this is an horrible way to solve the problem of multiple sources
     #[error("Syntax error: {}", _0.iter().map(|e| format!("\t{e} \n")).collect::<String>())]
     ParsingError(Vec<ParserError>),
+
+    #[error("Resolver error: {0}")]
+    ResolvingError(#[from] ResolverError),
+
     #[error("Runtime error: {0}")]
     RuntimeError(
         #[source]
         #[from]
         InterpreterError,
     ),
+
     #[error("IO error")]
     IoError(
         #[source]
@@ -187,3 +197,6 @@ pub enum InterpreterError {
     #[error("Return value: {value}")]
     Return { value: interpreter::LoxValue },
 }
+
+#[derive(Error, Debug)]
+pub enum ResolverError {}

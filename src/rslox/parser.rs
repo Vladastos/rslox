@@ -26,6 +26,7 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Vec<Stmt>, Vec<ParserError>> {
         let mut statements: Vec<Stmt> = Vec::new();
         let mut errors: Vec<ParserError> = Vec::new();
+
         while !self.is_at_end() {
             match self.parse_declaration() {
                 Ok(stmt) => statements.push(stmt),
@@ -62,7 +63,7 @@ impl Parser {
     /// Expects the current token to be the 'var' keyword.
     /// Parses the variable name and optional initializer.
     ///
-    /// Returns a `Stmt::ConstDeclaration` with the parsed variable name and initializer.
+    /// Returns a `Stmt::MutDeclaration` with the parsed variable name and initializer.
     fn parse_mut_declaration(&mut self) -> Result<Stmt, ParserError> {
         self.expect_token(scanner::TokenType::Mut)?;
         let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
@@ -697,6 +698,7 @@ impl Parser {
             match self.peek().token_type {
                 scanner::TokenType::Class
                 | scanner::TokenType::Fun
+                | scanner::TokenType::Mut
                 | scanner::TokenType::Let
                 | scanner::TokenType::For
                 | scanner::TokenType::If
