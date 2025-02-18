@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use ordered_float::OrderedFloat;
 
+use super::parser::FunctionParam;
 use super::InterpreterError;
 use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
@@ -86,6 +87,10 @@ impl Interpreter<'_> {
                 self.environment.new_scope();
                 self.run(statements)?;
                 self.environment.restore_scope();
+                Ok(())
+            }
+            Stmt::FunctionBlock { statements } => {
+                self.run(statements)?;
                 Ok(())
             }
             Stmt::If {
@@ -241,9 +246,13 @@ impl Interpreter<'_> {
     fn interpret_function_declaration(
         &mut self,
         name: &str,
-        parameters: &[String],
+        parameters: &[FunctionParam],
         body: Box<parser::Stmt>,
     ) -> Result<(), InterpreterError> {
+        //! TODO: Move the captured environment into the function
+        //! Ideally the function should only hold a reference to the captured environment, but
+        //! that would require a lot of refactoring
+
         let function = LoxValue::ClojureFunction {
             name: name.to_owned(),
             parameters: parameters.to_vec(),
@@ -264,11 +273,7 @@ impl Interpreter<'_> {
     /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the variable is
     /// defined, otherwise returns an `InterpreterError::UndefinedVariable`.
     fn interpret_variable(&self, name: &str) -> Result<LoxValue, InterpreterError> {
-        self.environment
-            .get(name)
-            .ok_or_else(|| InterpreterError::UndefinedVariable {
-                name: name.to_owned(),
-            })
+        self.environment.get(name, &mut false)
     }
     /// Converts a LoxParserValue to a LoxValue.
     ///
@@ -525,6 +530,7 @@ impl Interpreter<'_> {
 pub struct Environment {
     parent: Option<Box<Environment>>,
     values: HashMap<String, LoxValueType>,
+    is_function: bool,
 }
 
 impl Environment {
@@ -532,6 +538,7 @@ impl Environment {
         Environment {
             parent: None,
             values: (*BUILTINS).clone(),
+            is_function: false,
         }
     }
 
@@ -543,16 +550,35 @@ impl Environment {
         self.values.insert(name, LoxValueType::Mutable(value));
     }
 
-    pub fn get(&self, name: &str) -> Option<LoxValue> {
+    /// This method looks up a variable in the current environment and its parent environments.:
+    /// 1. Once it leaves a function scope, it sets a flag to true.
+    /// 2. If the variable is found after leaving a function scope, it checks if the variable is mutable:
+    ///     - If the variable is mutable, it returns an error.
+    ///     - If the variable is not mutable, it returns the value.
+    pub fn get(&self, name: &str, left_scope: &mut bool) -> Result<LoxValue, InterpreterError> {
         match self.values.get(name) {
-            Some(value) => Some(match value {
-                LoxValueType::Constant(value) => value.clone(),
-                LoxValueType::Mutable(value) => value.clone(),
-            }),
-            None => match &self.parent {
-                Some(parent) => parent.get(name),
-                None => None,
+            Some(value) => match value {
+                LoxValueType::Mutable(value) => {
+                    if *left_scope {
+                        return Err(InterpreterError::MutableVariableOutsideOfFunction {
+                            name: name.to_string(),
+                        });
+                    }
+                    Ok(value.clone())
+                }
+                LoxValueType::Constant(value) => Ok(value.clone()),
             },
+            None => {
+                if self.is_function {
+                    *left_scope = true;
+                }
+                return match &self.parent {
+                    Some(parent) => parent.get(name, left_scope),
+                    None => Err(InterpreterError::UndefinedVariable {
+                        name: name.to_string(),
+                    }),
+                };
+            }
         }
     }
 
@@ -583,6 +609,13 @@ impl Environment {
     pub fn new_scope(&mut self) {
         self.parent = Some(Box::new(self.clone()));
         self.values = HashMap::new();
+        self.is_function = false;
+    }
+
+    pub fn new_function_scope(&mut self) {
+        self.parent = Some(Box::new(self.clone()));
+        self.values = HashMap::new();
+        self.is_function = true;
     }
     pub fn restore_scope(&mut self) {
         assert!(self.parent.is_some());
@@ -609,7 +642,7 @@ pub enum LoxValue {
     ClojureFunction {
         name: String,
         body: Option<Box<parser::Stmt>>,
-        parameters: Vec<String>,
+        parameters: Vec<FunctionParam>,
     },
     BuiltinFunction {
         name: String,
@@ -668,12 +701,20 @@ impl LoxValue {
                     });
                 }
 
-                interpreter.environment.new_scope();
-
+                interpreter.environment.new_function_scope();
                 for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
-                    interpreter
-                        .environment
-                        .define_constant(parameter.to_owned(), argument.clone());
+                    match parameter {
+                        FunctionParam::Mut { name } => {
+                            interpreter
+                                .environment
+                                .define_mutable(name.clone(), argument.clone());
+                        }
+                        FunctionParam::Const { name } => {
+                            interpreter
+                                .environment
+                                .define_constant(name.clone(), argument.clone());
+                        }
+                    }
                 }
 
                 let interpreter_result = interpreter.interpret_statement(&body.clone().unwrap());
@@ -685,7 +726,6 @@ impl LoxValue {
                 };
 
                 interpreter.environment.restore_scope();
-
                 return_value
             }
             LoxValue::BuiltinFunction {

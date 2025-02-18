@@ -115,7 +115,7 @@ impl Parser {
         self.expect_token(scanner::TokenType::LeftParen)?;
         let params = self.parse_fun_params()?;
         self.expect_token(scanner::TokenType::RightParen)?;
-        let body = Box::from(self.parse_block_statement()?);
+        let body = Box::from(self.parse_function_block_statement()?);
         Ok(Stmt::Function { name, params, body })
     }
 
@@ -126,17 +126,35 @@ impl Parser {
     /// and returns the list of identifiers.
     /// If the next token is a ')', then this function returns an empty vector.
     ///
-    fn parse_fun_params(&mut self) -> Result<Vec<String>, ParserError> {
-        let mut params: Vec<String> = Vec::new();
+    fn parse_fun_params(&mut self) -> Result<Vec<FunctionParam>, ParserError> {
+        let mut params: Vec<FunctionParam> = Vec::new();
         if !self.check(scanner::TokenType::RightParen) {
-            params.push(
-                self.expect_token(scanner::TokenType::Identifier)
-                    .unwrap()
-                    .lexeme,
-            );
+            let param = match self.peek().token_type {
+                scanner::TokenType::Mut => {
+                    self.advance();
+                    FunctionParam::Mut {
+                        name: self.expect_token(scanner::TokenType::Identifier)?.lexeme,
+                    }
+                }
+                _ => FunctionParam::Const {
+                    name: self.expect_token(scanner::TokenType::Identifier)?.lexeme,
+                },
+            };
+            params.push(param);
             while self.check(scanner::TokenType::Comma) {
                 self.advance();
-                params.push(self.expect_token(scanner::TokenType::Identifier)?.lexeme);
+                let param = match self.peek().token_type {
+                    scanner::TokenType::Mut => {
+                        self.advance();
+                        FunctionParam::Mut {
+                            name: self.expect_token(scanner::TokenType::Identifier)?.lexeme,
+                        }
+                    }
+                    _ => FunctionParam::Const {
+                        name: self.expect_token(scanner::TokenType::Identifier)?.lexeme,
+                    },
+                };
+                params.push(param);
             }
         }
         Ok(params)
@@ -332,6 +350,22 @@ impl Parser {
         }
         self.expect_token(scanner::TokenType::RightBrace)?;
         Ok(Stmt::Block { statements })
+    }
+
+    fn parse_function_block_statement(&mut self) -> Result<Stmt, ParserError> {
+        self.advance();
+        let mut statements: Vec<Stmt> = Vec::new();
+        while !self.check(scanner::TokenType::RightBrace) {
+            if self.is_at_end() {
+                return Err(ParserError::UnterminatedBlock {
+                    line: self.peek().line,
+                    column: self.peek().column,
+                });
+            }
+            statements.push(self.parse_declaration()?);
+        }
+        self.expect_token(scanner::TokenType::RightBrace)?;
+        Ok(Stmt::FunctionBlock { statements })
     }
 
     /// Parses an expression.
@@ -730,6 +764,9 @@ pub enum Stmt {
         name: String,
         initializer: Option<Expr>,
     },
+    FunctionBlock {
+        statements: Vec<Stmt>,
+    },
     Block {
         statements: Vec<Stmt>,
     },
@@ -744,14 +781,20 @@ pub enum Stmt {
     },
     Function {
         name: String,
-        params: Vec<String>,
+        params: Vec<FunctionParam>,
         body: Box<Stmt>,
     },
+
     Return {
         value: Option<Expr>,
     },
 }
 
+#[derive(Debug, Clone)]
+pub enum FunctionParam {
+    Mut { name: String },
+    Const { name: String },
+}
 /// Expression
 
 #[derive(Debug, Clone)]

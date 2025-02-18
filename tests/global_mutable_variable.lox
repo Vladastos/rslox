@@ -1,0 +1,9 @@
+mut glob = "a";
+
+fun main() {
+    print glob;
+};
+
+// This should result in an error because this language does not allow global mutable variables
+
+main();

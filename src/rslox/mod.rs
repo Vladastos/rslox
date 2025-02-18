@@ -1,7 +1,6 @@
 mod builtins;
 mod interpreter;
 mod parser;
-mod resolver;
 mod scanner;
 
 #[cfg(test)]
@@ -65,9 +64,6 @@ impl Lox {
         // Parse the tokens
         let parse_result = parser::Parser::new(tokens).parse()?;
 
-        // Resolve declarations
-        resolver::Resolver::new(environment).resolve(&parse_result)?;
-
         // Run the statements
         interpreter::Interpreter::new(environment).run(&parse_result)?;
 
@@ -86,7 +82,9 @@ impl Lox {
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Errors
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #[derive(Debug, Error)]
 pub enum LoxError {
@@ -180,15 +178,21 @@ pub enum InterpreterError {
         found: String,
         expected: &'static str,
     },
+
     #[error("Undefined variable: {name}")]
     UndefinedVariable { name: String },
+
     #[error("Division by zero")]
     DivisionByZero,
 
     #[error("Cannot call non-function: {name}")]
     NonFunctionCall { name: String },
+
     #[error("Cannot assign to constant: {name}")]
     CannotAssingnToConstant { name: String },
+
+    #[error("Cannot access mutable variable outside of function: {name}")]
+    MutableVariableOutsideOfFunction { name: String },
 
     #[error("Invalid argument count: {found} expected: {expected}")]
     InvalidArgumentCount { found: usize, expected: usize },

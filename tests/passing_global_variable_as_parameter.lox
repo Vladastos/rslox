@@ -1,0 +1,16 @@
+let global = "global";
+
+fun main_mut(mut global) {
+    global = "main";
+    print global;
+};
+
+fun main(global) {
+    print global;
+};
+
+main_mut(global);
+
+main(global);
+
+print global;
