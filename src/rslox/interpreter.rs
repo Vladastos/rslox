@@ -6,10 +6,12 @@ use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
 
+use log::debug;
 use ordered_float::OrderedFloat;
 
 use super::builtins::init_builtins;
 use super::InterpreterError;
+use crate::rslox::capturer::Capturer;
 use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
 
@@ -252,7 +254,6 @@ impl Interpreter<'_> {
             parameters: parameters.to_vec(),
             body: Some(body),
         };
-
         self.environment.define_constant(name.to_owned(), function);
         Ok(())
     }
@@ -261,10 +262,8 @@ impl Interpreter<'_> {
         &mut self,
         body: &parser::Stmt,
     ) -> Result<HashMap<String, Rc<RefCell<LoxValueType>>>, InterpreterError> {
-        //! TODO: capture variables in the function body and put them in the captured_variables HashMap
-        // A way to do that would be to recursively evaluate the body and store variables in a HashMap each time a variable is called, then return the HashMap
-
-        todo!("capture variables in function body")
+        // Capture variables in the function body
+        Capturer::new(self.environment).capture(body)
     }
 
     /// Looks up the value of a variable in the current environment.
@@ -326,19 +325,24 @@ impl Interpreter<'_> {
         let right = self.interpret_expression(right)?;
 
         match operator {
+            // TODO: Instead of allowing type coercion, we should add a better print function to the standard library
             parser::LoxBinaryOperator::Plus => match left {
                 LoxValue::Number(left) => match right {
                     LoxValue::Number(right) => Ok(LoxValue::Number(left + right)),
+                    LoxValue::String(right) => Ok(LoxValue::String(left.to_string() + &right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
-                        expected: "number",
+                        expected: "number or string",
                     }),
                 },
                 LoxValue::String(left) => match right {
                     LoxValue::String(right) => Ok(LoxValue::String(left + &right)),
+                    LoxValue::Number(right) => {
+                        Ok(LoxValue::String(left.to_string() + &right.to_string()))
+                    }
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
-                        expected: "string",
+                        expected: "number or string",
                     }),
                 },
                 _ => Err(InterpreterError::InvalidOperandType {
@@ -559,6 +563,9 @@ impl Environment {
         self.values.insert(name, value.clone());
     }
 
+    pub fn extract_variable(&self, name: &str) -> Option<Rc<RefCell<LoxValueType>>> {
+        self.values.get(name).cloned()
+    }
     pub fn define_mutable(&mut self, name: String, value: LoxValue) {
         self.values
             .insert(name, Rc::new(RefCell::new(LoxValueType::Mutable(value))));
@@ -681,6 +688,7 @@ impl LoxValue {
     ) -> Result<LoxValue, InterpreterError> {
         return match self {
             LoxValue::ClojureFunction {
+                name,
                 body,
                 parameters,
                 captured_variables,
@@ -694,7 +702,6 @@ impl LoxValue {
                 }
 
                 interpreter.environment.new_scope();
-
                 // Add the captured variables to the environment
                 for (name, value) in captured_variables.iter() {
                     interpreter

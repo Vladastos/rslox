@@ -1,4 +1,5 @@
 mod builtins;
+mod capturer;
 mod interpreter;
 mod parser;
 mod scanner;
