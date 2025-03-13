@@ -1,12 +1,14 @@
 //! TODO:
 //!  - Change the return type of the `name()` method of `LoxValue` to `&str`.
 
-use crate::rslox::builtins::BUILTINS;
-
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
+use std::rc::Rc;
 
 use ordered_float::OrderedFloat;
 
+use super::builtins::init_builtins;
 use super::InterpreterError;
 use crate::rslox::parser;
 use crate::rslox::parser::{Expr, Stmt};
@@ -246,11 +248,23 @@ impl Interpreter<'_> {
     ) -> Result<(), InterpreterError> {
         let function = LoxValue::ClojureFunction {
             name: name.to_owned(),
+            captured_variables: self.capture_variables_in_function_body(&body)?,
             parameters: parameters.to_vec(),
             body: Some(body),
         };
+
         self.environment.define_constant(name.to_owned(), function);
         Ok(())
+    }
+
+    fn capture_variables_in_function_body(
+        &mut self,
+        body: &parser::Stmt,
+    ) -> Result<HashMap<String, Rc<RefCell<LoxValueType>>>, InterpreterError> {
+        //! TODO: capture variables in the function body and put them in the captured_variables HashMap
+        // A way to do that would be to recursively evaluate the body and store variables in a HashMap each time a variable is called, then return the HashMap
+
+        todo!("capture variables in function body")
     }
 
     /// Looks up the value of a variable in the current environment.
@@ -524,28 +538,35 @@ impl Interpreter<'_> {
 #[derive(Debug, Clone)]
 pub struct Environment {
     parent: Option<Box<Environment>>,
-    values: HashMap<String, LoxValueType>,
+    values: HashMap<String, Rc<RefCell<LoxValueType>>>,
 }
 
 impl Environment {
     pub fn new() -> Environment {
         Environment {
             parent: None,
-            values: (*BUILTINS).clone(),
+            values: init_builtins(),
         }
     }
 
     pub fn define_constant(&mut self, name: String, value: LoxValue) {
-        self.values.insert(name, LoxValueType::Constant(value));
+        self.values
+            .insert(name, Rc::new(RefCell::new(LoxValueType::Constant(value))));
+    }
+
+    /// This allows us to insert a constant into the environment by reference
+    pub fn inject_variable(&mut self, name: String, value: &Rc<RefCell<LoxValueType>>) {
+        self.values.insert(name, value.clone());
     }
 
     pub fn define_mutable(&mut self, name: String, value: LoxValue) {
-        self.values.insert(name, LoxValueType::Mutable(value));
+        self.values
+            .insert(name, Rc::new(RefCell::new(LoxValueType::Mutable(value))));
     }
 
     pub fn get(&self, name: &str) -> Option<LoxValue> {
         match self.values.get(name) {
-            Some(value) => Some(match value {
+            Some(value) => Some(match value.as_ref().borrow().deref() {
                 LoxValueType::Constant(value) => value.clone(),
                 LoxValueType::Mutable(value) => value.clone(),
             }),
@@ -562,7 +583,7 @@ impl Environment {
         new_value: LoxValue,
     ) -> Result<LoxValue, InterpreterError> {
         match self.values.get_mut(name) {
-            Some(value) => match value {
+            Some(value) => match value.as_ref().borrow_mut().deref_mut() {
                 LoxValueType::Constant(_) => Err(InterpreterError::CannotAssingnToConstant {
                     name: name.to_string(),
                 }),
@@ -609,6 +630,7 @@ pub enum LoxValue {
     ClojureFunction {
         name: String,
         body: Option<Box<parser::Stmt>>,
+        captured_variables: HashMap<String, Rc<RefCell<LoxValueType>>>,
         parameters: Vec<String>,
     },
     BuiltinFunction {
@@ -659,7 +681,10 @@ impl LoxValue {
     ) -> Result<LoxValue, InterpreterError> {
         return match self {
             LoxValue::ClojureFunction {
-                body, parameters, ..
+                body,
+                parameters,
+                captured_variables,
+                ..
             } => {
                 if arguments.len() != parameters.len() {
                     return Err(InterpreterError::InvalidArgumentCount {
@@ -670,6 +695,14 @@ impl LoxValue {
 
                 interpreter.environment.new_scope();
 
+                // Add the captured variables to the environment
+                for (name, value) in captured_variables.iter() {
+                    interpreter
+                        .environment
+                        .inject_variable(name.to_owned(), value);
+                }
+
+                // Add the arguments to the environment
                 for (parameter, argument) in parameters.iter().zip(arguments.iter()) {
                     interpreter
                         .environment
