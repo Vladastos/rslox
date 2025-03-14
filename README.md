@@ -26,11 +26,11 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**ConstDeclaration** -> "let" *IDENTIFIER* ( "=" Expression )? ;
 >
->**FunDeclaration** -> "fun" *IDENTIFIER* "(" Parameters? ")" Block 
+>**FunDeclaration** -> "fun" *IDENTIFIER* "(" Parameters? ")" BlockStatement 
 >
 >**Parameters** -> *IDENTIFIER* ( "," *IDENTIFIER* )\*
 >
->**Statement** -> ExpressionStatement | PrintStatement | WhileStatement | IfStatement | ForStatement | ReturnStatement | Block
+>**Statement** -> ExpressionStatement | PrintStatement | WhileStatement | IfStatement | ForStatement | ReturnStatement | BlockStatement
 >
 >**WhileStatement** -> "while" "(" Expression ")" Statement
 >
@@ -38,7 +38,7 @@ Here is the grammar that is implemented for now by Rslox. It will be updated as 
 >
 >**IfStatement** -> "if" "(" Expression ")" Statement ( "else" Statement )?
 >
->**Block** -> "{" Declaration\* "}"
+>**BlockStatement** -> "{" Declaration\* "}"
 >
 >**ExpressionStatement** -> Expression ";"
 >

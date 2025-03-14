@@ -24,20 +24,20 @@ while ( true ) {
         while ( m_multiple + next_addend <= next ) {
             while ( m_multiple + next_addend <= next) {
                 next_addend = next_addend * 2;
-            };
+            }
             m_multiple = m_multiple + next_addend / 2;
             next_addend = m;
-        };
+        }
 
         state = next - m_multiple;
 
         if ( state * 2 < m )
-            row = row + "/"
+            row = row + "/";
         else
             row = row + "\";
 
         col = col + 1;
-    };
+    }
 
     print row;
-};
+}

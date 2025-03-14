@@ -45,31 +45,39 @@ impl Parser {
     /// Parses a declaration.
     ///
     /// This is the entry point for parsing a declaration. It will parse either a variable declaration or a statement.
-    /// Expects a semicolon at the end.
     fn parse_declaration(&mut self) -> Result<Stmt, ParserError> {
         let result = match self.peek().token_type {
-            scanner::TokenType::Let => self.parse_const_declaration()?,
-            scanner::TokenType::Mut => self.parse_mut_declaration()?,
+            scanner::TokenType::Let => {
+                let res = self.parse_const_declaration()?;
+                self.expect_token(scanner::TokenType::Semicolon)?;
+                res
+            }
+            scanner::TokenType::Mut => {
+                let res = self.parse_mut_declaration()?;
+                self.expect_token(scanner::TokenType::Semicolon)?;
+                res
+            }
             scanner::TokenType::Fun => self.parse_fun_declaration()?,
             _ => self.parse_statement()?,
         };
-        self.expect_token(scanner::TokenType::Semicolon)?;
+
         Ok(result)
     }
 
-    /// Parses a variable declaration.
+    /// Parses a mutable variable declaration.
     ///
-    /// Expects the current token to be the 'var' keyword.
+    /// Expects the current token to be the 'mut' keyword.
     /// Parses the variable name and optional initializer.
     ///
-    /// Returns a `Stmt::ConstDeclaration` with the parsed variable name and initializer.
+    /// Returns a `Stmt::MutDeclaration` with the parsed variable name and initializer.
     fn parse_mut_declaration(&mut self) -> Result<Stmt, ParserError> {
         self.expect_token(scanner::TokenType::Mut)?;
         let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
 
         let initializer = if self.check(scanner::TokenType::Equal) {
             self.advance();
-            Some(self.parse_expression()?)
+            let expression = self.parse_expression()?;
+            Some(expression)
         } else {
             None
         };
@@ -77,13 +85,20 @@ impl Parser {
         Ok(Stmt::MutDeclaration { name, initializer })
     }
 
+    /// Parses a constant declaration.
+    ///
+    /// Expects the current token to be the 'let' keyword.
+    /// Parses the variable name and optional initializer.
+    ///
+    /// Returns a `Stmt::ConstDeclaration` with the parsed variable name and initializer.
     fn parse_const_declaration(&mut self) -> Result<Stmt, ParserError> {
         self.expect_token(scanner::TokenType::Let)?;
         let name = self.expect_token(scanner::TokenType::Identifier)?.lexeme;
 
         let initializer = if self.check(scanner::TokenType::Equal) {
             self.advance();
-            Some(self.parse_expression()?)
+            let expression = self.parse_expression()?;
+            Some(expression)
         } else {
             None
         };
@@ -151,6 +166,11 @@ impl Parser {
     ///   - A for statement
     ///   - A return statement
     ///   - An expression statement
+    ///
+    /// Expects a semicolon at the end if the statement is one of the following:
+    ///   - A print statement
+    ///   - An expression statement
+    ///   - A return statement
     ///
     /// Returns a `Stmt` with the parsed statement.
     fn parse_statement(&mut self) -> Result<Stmt, ParserError> {
@@ -290,6 +310,7 @@ impl Parser {
         } else {
             Some(self.parse_expression()?)
         };
+        self.expect_token(scanner::TokenType::Semicolon)?;
         Ok(Stmt::Return { value })
     }
 
@@ -298,9 +319,9 @@ impl Parser {
     /// This function parses an expression and constructs a `Stmt::Expression` node containing the parsed expression.
     /// Returns an error if the expression cannot be parsed.
     fn parse_expression_statement(&mut self) -> Result<Stmt, ParserError> {
-        Ok(Stmt::Expression {
-            expression: self.parse_expression()?,
-        })
+        let expression = self.parse_expression()?;
+        self.expect_token(scanner::TokenType::Semicolon)?;
+        Ok(Stmt::Expression { expression })
     }
 
     /// Parses a print statement.
@@ -312,9 +333,9 @@ impl Parser {
     /// Returns an error if the expression cannot be parsed.
     fn parse_print_statement(&mut self) -> Result<Stmt, ParserError> {
         self.advance();
-        Ok(Stmt::Print {
-            expression: self.parse_expression()?,
-        })
+        let expression = self.parse_expression()?;
+        self.expect_token(scanner::TokenType::Semicolon)?;
+        Ok(Stmt::Print { expression })
     }
 
     fn parse_block_statement(&mut self) -> Result<Stmt, ParserError> {

@@ -1,4 +1,3 @@
-// For some reason, returning a value causes the variable to leak to the outer scope
 fun outer() {
     mut innerVar = 2;
     fun inner() {
@@ -6,17 +5,17 @@ fun outer() {
         print "incrementing innerVar. new value: " + innerVar;
         print innerVar;
         return innerVar;
-    };
+    }
     return inner;
-};
+}
 
-let f = outer();
+let func = outer();
 
-let extracted = f();
+let extracted = func();
 
 print "extracted: " + extracted;
 
-f();
-f();
+func();
+func();
 
 print "extracted: " + extracted;

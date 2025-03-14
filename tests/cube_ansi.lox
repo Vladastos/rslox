@@ -91,8 +91,8 @@ while (true) {
                 if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
                     new_color = RED;
                     dist = dR;
-                };
-            };
+                }
+            }
             // Distance to the second plane (z = -1; x,y in [-1,1])
             let dC = (-1 - Cz) / cvz;
             if ( dC < dist ) {
@@ -101,8 +101,8 @@ while (true) {
                 if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
                     new_color = CYAN;
                     dist = dC;
-                };
-            };
+                }
+            }
             // Distance to the third plane (x = 1; z,y in [-1,1])
             let dB = (1 - Cx) / cvx;
             if ( dB < dist ) {
@@ -111,8 +111,8 @@ while (true) {
                 if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
                     new_color = BLUE;
                     dist = dB;
-                };
-            };
+                }
+            }
             // Distance to the fourth plane (x = -1; z,y in [-1,1])
             let dY = (-1 - Cx) / cvx;
             if ( dY < dist ) {
@@ -121,8 +121,8 @@ while (true) {
                 if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
                     new_color = YELLOW;
                     dist = dY;
-                };
-            };
+                }
+            }
             // Distance to the fifth plane (y = 1; x,z in [-1,1])
             let dG = (1 - Cy) / cvy;
             if ( dG < dist ) {
@@ -131,8 +131,8 @@ while (true) {
                 if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
                     new_color = GREEN;
                     dist = dG;
-                };
-            };
+                }
+            }
             // Distance to the sixth plane (y = -1; x,z in [-1,1])
             let dM = (-1 - Cy) / cvy;
             if ( dM < dist ) {
@@ -141,25 +141,25 @@ while (true) {
                 if ( -1 < b1 && b1 < 1 && -1 < b2 && b2 < 1 ) {
                     new_color = MAGENTA;
                     dist = dM;
-                };
-            };
+                }
+            }
 
             if ( new_color != color ) {
                 color = new_color;
                 row = row + color;
-            };
+            }
 
             if ( color != RESET )
-                row = row + "#"
+                row = row + "#";
             else
                 row = row + ".";
 
             x_intercept = x_intercept + 0.05;
-        };
+        }
 
         print row;
         y_intercept = y_intercept - 0.1;
-    };
+    }
 
     new_row = HOME;
-};
+}

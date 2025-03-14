@@ -4,17 +4,25 @@ fun outer() {
         innerVar = innerVar + 1;
         print "incrementing innerVar. new value: " + innerVar;
         return innerVar;
-    };
+    }
     return inner;
-};
+}
 
-let f = outer();
+let func = outer();
 
-let extracted = f();
+let first_return_value = func();
 
-print "extracted: " + extracted;
+// should be 3
+print "first_return_value: " + first_return_value;
 
-f();
-f();
+func();
 
-print "extracted: " + extracted;
+func();
+
+let second_return_value = func();
+
+// should be 5
+print "second_return_value: " + second_return_value;
+
+// should be 3
+print "first_return_value: " + first_return_value;

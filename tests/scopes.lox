@@ -15,13 +15,13 @@ let outer = "outer";
             print inner;
             print inner2;
             print inner3;
-        };
+        }
         print outer;
         print inner;
         print inner2;
-    };
+    }
     print outer;
     print inner;
-};
+}
 
 print outer;

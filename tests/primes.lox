@@ -12,12 +12,12 @@ while (i <= END) {
         mut p = j;
         while ( p < i) {
             p = p + j;
-        };
+        }
         prime = p != i;
         j = j + 2;
-    };
+    }
     if ( prime ) {
         print i;
-    };
+    }
     i = i + 2;
-};
+}

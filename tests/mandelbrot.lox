@@ -38,7 +38,7 @@ while ( imag < MAX_IMAG ) {
             xi = new_xi;
 
             iter = iter + 1;
-        };
+        }
 
         if ( iter == ITERATIONS) {
             row = row + "@";
@@ -58,12 +58,12 @@ while ( imag < MAX_IMAG ) {
             row = row + ":";
         } else {
             row = row + ".";
-        };
+        }
 
         real = real + d_real;
-    };
+    }
 
     print row;
 
     imag = imag + d_imag;
-};
+}

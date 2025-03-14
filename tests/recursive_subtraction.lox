@@ -4,8 +4,8 @@ fun recursive_subtraction(x) {
     } else {
         print x;
         recursive_subtraction(x-1);
-    };
-};
+    }
+}
 
 // Currently overflows the stack at about 110 iterations!!
 // This is not good!

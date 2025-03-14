@@ -6,14 +6,14 @@ fun outer() {
         print "incrementing innerVar. new value: " + innerVar;
         //print innerVar;
         
-    };
+    }
     return inner;
-};
+}
 
-let f = outer();
+let func = outer();
 
-f();
-f();
-f();
+func();
+func();
+func();
 
 print innerVar;
