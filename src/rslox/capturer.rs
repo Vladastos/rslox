@@ -34,7 +34,6 @@ impl Capturer<'_> {
                 if let Some(initializer) = initializer {
                     self.capture_expression(initializer)?;
                 }
-
                 Ok(())
             }
             parser::Stmt::Expression { expression } => {
@@ -76,10 +75,10 @@ impl Capturer<'_> {
                 self.capture_statement(body)?;
                 Ok(())
             }
-            parser::Stmt::Return { value } => {
-                if let Some(value) = value {
-                    self.capture_expression(value)?;
-                }
+            parser::Stmt::Return { .. } => {
+                // if let Some(value) = value {
+                //     self.capture_expression(value)?;
+                // }
                 Ok(())
             }
         }
@@ -93,7 +92,9 @@ impl Capturer<'_> {
                     // This is the only thing that we care about in the capturer
                     // We could also return an error here if the variable is not a constant,
                     // but it would be better to do it in a previous step and not at runtime
-                    self.captured_variables.insert(name.to_owned(), value);
+                    if !self.captured_variables.contains_key(name) {
+                        self.captured_variables.insert(name.to_owned(), value);
+                    }
                 }
                 Ok(())
             }

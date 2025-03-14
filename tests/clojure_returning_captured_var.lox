@@ -1,8 +1,10 @@
+// For some reason, returning a value causes the variable to leak to the outer scope
 fun outer() {
     mut innerVar = 2;
     fun inner() {
         innerVar = innerVar + 1;
         print "incrementing innerVar. new value: " + innerVar;
+        print innerVar;
         return innerVar;
     };
     return inner;

@@ -1,20 +1,19 @@
+
 fun outer() {
     mut innerVar = 2;
     fun inner() {
         innerVar = innerVar + 1;
         print "incrementing innerVar. new value: " + innerVar;
-        return innerVar;
+        //print innerVar;
+        
     };
     return inner;
 };
 
 let f = outer();
 
-let extracted = f();
-
-print "extracted: " + extracted;
-
+f();
 f();
 f();
 
-print "extracted: " + extracted;
+print innerVar;

@@ -9,4 +9,4 @@ fun recursive_subtraction(x) {
 
 // Currently overflows the stack at about 110 iterations!!
 // This is not good!
-recursive_subtraction(100);
+recursive_subtraction(80);

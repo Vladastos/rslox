@@ -1,5 +1,27 @@
-fun sum(a,b){
-    return a + b;
+let outer = "outer";
+
+{
+    let inner = "inner";
+    print outer;
+    print inner;
+    {
+        let inner2 = "inner2";
+        print outer;
+        print inner;
+        print inner2;
+        {
+            let inner3 = "inner3";
+            print outer;
+            print inner;
+            print inner2;
+            print inner3;
+        };
+        print outer;
+        print inner;
+        print inner2;
+    };
+    print outer;
+    print inner;
 };
 
-print sum(1,2);
+print outer;

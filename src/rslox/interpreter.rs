@@ -1,6 +1,7 @@
 //! TODO:
 //!  - Change the return type of the `name()` method of `LoxValue` to `&str`.
 
+use log::debug;
 use ordered_float::OrderedFloat;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -40,6 +41,8 @@ impl Interpreter<'_> {
     /// * `Result<(), InterpreterError>` - Returns `Ok(())` if all statements
     /// are successfully executed, otherwise returns an `InterpreterError`.
     pub fn run(&mut self, statements: &[parser::Stmt]) -> Result<(), InterpreterError> {
+        debug!("Running {} statements", statements.len());
+        debug!("Statements: {:#?}", statements);
         for statement in statements {
             self.interpret_statement(statement)?
         }
@@ -86,9 +89,9 @@ impl Interpreter<'_> {
             }
             Stmt::Block { statements } => {
                 self.environment.new_scope();
-                self.run(statements)?;
+                let result = self.run(statements);
                 self.environment.restore_scope();
-                Ok(())
+                result
             }
             Stmt::If {
                 condition,
@@ -607,35 +610,42 @@ impl Environment {
     }
 
     pub fn new_scope(&mut self) {
+        debug!("Creating new scope");
         self.parent = Some(Box::new(self.clone()));
         self.values = HashMap::new();
+        debug!("Values: {:#?}", self._get_all_keys());
+        debug!("Number of parents after: {}", self._get_number_of_parents());
     }
     pub fn restore_scope(&mut self) {
         if self.parent.is_none() {
             return;
         }
-        self.parent.as_mut().unwrap().restore_scope();
-
-        let parent = self.parent.take().unwrap();
-        self.values = parent.values;
-        self.parent = parent.parent;
+        debug!("Restoring scope");
+        debug!(
+            "Number of parents before: {}",
+            self._get_number_of_parents()
+        );
+        self.values = self.parent.as_mut().unwrap().values.clone();
+        self.parent = self.parent.take().unwrap().parent.take();
+        debug!("Number of parents after: {}", self._get_number_of_parents());
+        debug!("Values: {:#?}", self._get_all_keys());
     }
 
-    // pub fn _get_all_keys(&self) -> Vec<String> {
-    //     let mut keys = self.values.keys().cloned().collect::<Vec<String>>();
-    //     if let Some(parent) = &self.parent {
-    //         keys.extend(parent._get_all_keys());
-    //     }
-    //     keys
-    // }
+    pub fn _get_all_keys(&self) -> Vec<String> {
+        let mut keys = self.values.keys().cloned().collect::<Vec<String>>();
+        if let Some(parent) = &self.parent {
+            keys.extend(parent._get_all_keys());
+        }
+        keys
+    }
 
-    // pub fn _get_number_of_parents(&self) -> u32 {
-    //     if self.parent.is_none() {
-    //         0
-    //     } else {
-    //         1 + self.parent.as_ref().unwrap()._get_number_of_parents()
-    //     }
-    // }
+    pub fn _get_number_of_parents(&self) -> u32 {
+        if self.parent.is_none() {
+            0
+        } else {
+            1 + self.parent.as_ref().unwrap()._get_number_of_parents()
+        }
+    }
 }
 
 /// The type of a Lox value.
@@ -711,6 +721,11 @@ impl LoxValue {
                 captured_variables,
                 ..
             } => {
+                debug!(
+                    "Calling function with parameters: {:#?} and arguments: {:#?}",
+                    parameters, arguments
+                );
+
                 if arguments.len() != parameters.len() {
                     return Err(InterpreterError::InvalidArgumentCount {
                         expected: parameters.len(),
@@ -718,6 +733,7 @@ impl LoxValue {
                     });
                 }
 
+                debug!("captured variables: {:#?}", captured_variables);
                 interpreter.environment.new_scope();
                 // Add the captured variables to the environment
                 for (name, value) in captured_variables.iter() {
@@ -735,13 +751,13 @@ impl LoxValue {
 
                 let interpreter_result = interpreter.interpret_statement(&body.clone().unwrap());
 
+                interpreter.environment.restore_scope();
                 let return_value: Result<LoxValue, InterpreterError> = match interpreter_result {
                     Ok(_value) => Ok(LoxValue::Nil),
                     Err(InterpreterError::Return { value }) => Ok(value),
                     Err(error) => Err(error),
                 };
-
-                interpreter.environment.restore_scope();
+                debug!("Return value: {:#?}", return_value);
 
                 return_value
             }
