@@ -1,13 +1,11 @@
 //! TODO:
 //!  - Change the return type of the `name()` method of `LoxValue` to `&str`.
 
+use ordered_float::OrderedFloat;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::rc::Rc;
-
-use log::debug;
-use ordered_float::OrderedFloat;
 
 use super::builtins::init_builtins;
 use super::InterpreterError;
@@ -258,11 +256,11 @@ impl Interpreter<'_> {
         Ok(())
     }
 
+    /// Captures variables in a function body and returns a map of variable names to their values.
     fn capture_variables_in_function_body(
         &mut self,
         body: &parser::Stmt,
     ) -> Result<HashMap<String, Rc<RefCell<LoxValueType>>>, InterpreterError> {
-        // Capture variables in the function body
         Capturer::new(self.environment).capture(body)
     }
 
@@ -613,11 +611,31 @@ impl Environment {
         self.values = HashMap::new();
     }
     pub fn restore_scope(&mut self) {
-        assert!(self.parent.is_some());
+        if self.parent.is_none() {
+            return;
+        }
+        self.parent.as_mut().unwrap().restore_scope();
+
         let parent = self.parent.take().unwrap();
         self.values = parent.values;
         self.parent = parent.parent;
     }
+
+    // pub fn _get_all_keys(&self) -> Vec<String> {
+    //     let mut keys = self.values.keys().cloned().collect::<Vec<String>>();
+    //     if let Some(parent) = &self.parent {
+    //         keys.extend(parent._get_all_keys());
+    //     }
+    //     keys
+    // }
+
+    // pub fn _get_number_of_parents(&self) -> u32 {
+    //     if self.parent.is_none() {
+    //         0
+    //     } else {
+    //         1 + self.parent.as_ref().unwrap()._get_number_of_parents()
+    //     }
+    // }
 }
 
 /// The type of a Lox value.
@@ -688,7 +706,6 @@ impl LoxValue {
     ) -> Result<LoxValue, InterpreterError> {
         return match self {
             LoxValue::ClojureFunction {
-                name,
                 body,
                 parameters,
                 captured_variables,

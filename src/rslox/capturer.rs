@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
-    interpreter::{Environment, LoxValue, LoxValueType},
+    interpreter::{Environment, LoxValueType},
     parser, InterpreterError,
 };
 
@@ -72,14 +72,8 @@ impl Capturer<'_> {
                 self.capture_statement(body)?;
                 Ok(())
             }
-            parser::Stmt::Function { params, body, .. } => {
+            parser::Stmt::Function { body, .. } => {
                 self.capture_statement(body)?;
-                for parameter in params {
-                    self.captured_variables.insert(
-                        parameter.to_owned(),
-                        Rc::new(RefCell::new(LoxValueType::Constant(LoxValue::Nil))),
-                    );
-                }
                 Ok(())
             }
             parser::Stmt::Return { value } => {
