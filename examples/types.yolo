@@ -1,0 +1,37 @@
+
+abstract type Animal {
+    
+    mut name: String
+    
+    mut age: Int
+
+    fun sayHello(): String {
+        let message : String = "Hello, my name is " + name + " and I am " + age + " years old.";
+        return message;
+    }
+
+    abstract fun makeNoise(): String;
+}
+
+type Dog extends Animal {
+    
+    fun makeNoise(): String {
+        return "Woof!";
+    }
+
+    constructor(name: String, age: Int) {
+        
+        this.name = name;
+        this.age = age;
+
+    }
+}
+
+fun main() {
+    
+    let dog: Animal = new Dog("Fido", 3);
+
+    print dog.sayHello();
+
+    print dog.makeNoise();
+}

@@ -80,3 +80,65 @@ PrimaryExpression    ::= NUMBER
                        | "nil"
                        | "(" Expression ")"
                        | IDENTIFIER ;
+
+
+## Graph
+
+### Program
+
+```mermaid
+graph TD
+    Program([Program]) -.-> Declaration[  Declaration ]
+    Declaration --> OneOf1{" "}
+
+
+    OneOf1 --> ConstDeclaration
+    OneOf1 --> VarDeclaration
+    OneOf1 --> FunDeclaration
+    OneOf1 --> TypeDeclaration
+    OneOf1 --> Statement
+
+```
+
+### Const/Var Declaration
+
+```mermaid
+graph TD
+    ConstVarDeclaration[["Const/Var Declaration"]] --> EachOf1{{" "}}
+
+    EachOf1 --> Keyword(["#quot;let#quot; #vert; #quot;mut#quot;"])
+    EachOf1 --> Identifier["Identifier"]
+    EachOf1 --> Colon(["#quot;#colon;#quot;"])
+    EachOf1 --> Type["Type Identifier"]
+    EachOf1 --> Equals(["#quot;#equals;#quot;"])
+    EachOf1 --> Expression["Expression"]
+    EachOf1 --> Semicolon(["#quot;;#quot;"])
+```
+
+### Function Declaration
+
+```mermaid
+graph TD
+    FunDeclaration[["Function Declaration"]] --> EachOf{{" "}}
+    EachOf--> Keyword(["#quot;fun#quot;"])
+    EachOf --> Identifier["Identifier"]
+    EachOf --> LeftParen(["#quot;#lpar;#quot;"])
+    EachOf --> Parameters["Parameters"]
+    EachOf --> RightParen(["#quot;#rpar;#quot;"])
+    EachOf --> Colon(["#quot;#colon;#quot;"])
+    EachOf --> Type["Type Identifier"]
+    EachOf --> BlockStatement["Block Statement"]
+```
+
+### Type Declaration
+
+```mermaid
+graph TD
+    TypeDeclaration[["Type Declaration"]] --> EachOf{{" "}}
+    EachOf --> Keyword(["#quot;type#quot;"])
+    EachOf --> Identifier["Type Identifier"]
+    EachOf --> TypeParameters["Type Parameters"]
+    EachOf --> LeftBrace(["#quot;#lbrace;#quot;"])
+    EachOf --> TypeDefinition["Type Definition"]
+    EachOf --> RightBrace(["#quot;#rbrace;#quot;"])
+```
