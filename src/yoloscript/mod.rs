@@ -17,16 +17,16 @@ use log::error;
 use scanner::TokenType;
 use thiserror::Error;
 
-/// Lox
+/// Yolo
 
-pub struct Lox;
+pub struct Yolo;
 
-impl Lox {
-    pub fn new() -> Lox {
-        Lox
+impl Yolo {
+    pub fn new() -> Yolo {
+        Yolo
     }
-    pub fn run_file(&mut self, path: &Path) -> Result<(), LoxError> {
-        let source = std::fs::read_to_string(path).map_err(|source| LoxError::FileError {
+    pub fn run_file(&mut self, path: &Path) -> Result<(), YoloError> {
+        let source = std::fs::read_to_string(path).map_err(|source| YoloError::FileError {
             path: path.to_owned(),
             source,
         })?;
@@ -36,7 +36,7 @@ impl Lox {
         Ok(())
     }
 
-    pub fn run_prompt(&mut self) -> Result<(), LoxError> {
+    pub fn run_prompt(&mut self) -> Result<(), YoloError> {
         let mut environment = Environment::new();
         loop {
             let mut line = String::new();
@@ -58,7 +58,7 @@ impl Lox {
         Ok(())
     }
 
-    fn run(&mut self, source: &str, environment: &mut Environment) -> Result<(), LoxError> {
+    fn run(&mut self, source: &str, environment: &mut Environment) -> Result<(), YoloError> {
         // Scan the source code into tokens
         let tokens = scanner::Scanner::new(source).scan_tokens()?;
 
@@ -75,10 +75,10 @@ impl Lox {
     ///
     /// Used for testing code without running it.
     #[allow(dead_code)]
-    pub fn parse(&mut self, source: &str) -> Result<(), LoxError> {
+    pub fn parse(&mut self, source: &str) -> Result<(), YoloError> {
         parser::Parser::new(scanner::Scanner::new(source).scan_tokens()?)
             .parse()
-            .map_err(|errors| LoxError::ParsingError(errors))
+            .map_err(|errors| YoloError::ParsingError(errors))
             .map(|_| ())
     }
 }
@@ -86,7 +86,7 @@ impl Lox {
 /// Errors
 
 #[derive(Debug, Error)]
-pub enum LoxError {
+pub enum YoloError {
     #[error("Could not open file {}", path.display())]
     FileError {
         path: PathBuf,
@@ -116,9 +116,9 @@ pub enum LoxError {
     ),
 }
 
-impl From<Vec<ParserError>> for LoxError {
+impl From<Vec<ParserError>> for YoloError {
     fn from(errors: Vec<ParserError>) -> Self {
-        LoxError::ParsingError(errors)
+        YoloError::ParsingError(errors)
     }
 }
 
@@ -186,5 +186,5 @@ pub enum InterpreterError {
 
     /// This error is returned when a function returns a value
     #[error("Return value: {value}")]
-    Return { value: interpreter::LoxValue },
+    Return { value: interpreter::YoloValue },
 }

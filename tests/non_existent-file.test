@@ -1,5 +1,5 @@
-source="tests/non-existent.lox"
+source="tests/non-existent.yolo"
 
 [outcome]
 type="Failure"
-message="Could not open file tests/non-existent.lox"
+message="Could not open file tests/non-existent.yolo"

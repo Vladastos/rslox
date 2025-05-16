@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use super::{
-    interpreter::{Environment, LoxValueType},
+    interpreter::{Environment, YoloValueType},
     parser, InterpreterError,
 };
 
@@ -10,7 +10,7 @@ use super::{
 /// The HashMap is then returned.
 pub struct Capturer<'a> {
     environment: &'a Environment,
-    pub captured_variables: HashMap<String, Rc<RefCell<LoxValueType>>>,
+    pub captured_variables: HashMap<String, Rc<RefCell<YoloValueType>>>,
 }
 
 impl Capturer<'_> {
@@ -24,7 +24,7 @@ impl Capturer<'_> {
     pub fn capture(
         &mut self,
         body: &parser::Stmt,
-    ) -> Result<HashMap<String, Rc<RefCell<LoxValueType>>>, InterpreterError> {
+    ) -> Result<HashMap<String, Rc<RefCell<YoloValueType>>>, InterpreterError> {
         self.capture_statement(body)?;
         Ok(self.captured_variables.clone())
     }

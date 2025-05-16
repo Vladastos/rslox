@@ -1,8 +1,8 @@
-mod rslox;
+mod yoloscript;
 use std::path::PathBuf;
 
 use clap::Parser;
-use rslox::LoxError;
+use yoloscript::YoloError;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None, author)]
@@ -11,17 +11,17 @@ struct Args {
     script: Option<PathBuf>,
 }
 
-fn main() -> Result<(), LoxError> {
+fn main() -> Result<(), YoloError> {
     // Set up logging
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("trace"));
 
-    let mut lox = rslox::Lox::new();
+    let mut yolo = yoloscript::Yolo::new();
 
     match Args::parse() {
         Args {
             script: Some(script),
-        } => lox.run_file(&script)?,
-        Args { script: None } => lox.run_prompt()?,
+        } => yolo.run_file(&script)?,
+        Args { script: None } => yolo.run_prompt()?,
     }
 
     Ok(())

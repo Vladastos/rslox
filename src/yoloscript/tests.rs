@@ -1,6 +1,6 @@
 use std::{ffi::OsStr, os::unix::ffi::OsStrExt};
 
-use crate::rslox::*;
+use crate::yoloscript::*;
 
 // Include generated test code
 include!(concat!(env!("OUT_DIR"), "/tests.rs"));
@@ -15,10 +15,10 @@ fn test_impl(
 ) {
     let test_file_path = std::path::Path::new(OsStr::from_bytes(&source));
 
-    let mut lox = Lox::new();
+    let mut yolo = Yolo::new();
     let result = match parse_only {
-        true => lox.parse(&std::fs::read_to_string(test_file_path).unwrap()),
-        false => lox.run_file(test_file_path),
+        true => yolo.parse(&std::fs::read_to_string(test_file_path).unwrap()),
+        false => yolo.run_file(test_file_path),
     };
 
     match (expected, result) {

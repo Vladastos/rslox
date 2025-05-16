@@ -84,10 +84,10 @@ fn main() {
         // All test description files
         glob("./tests/**/*.test").unwrap().map(handle_test_file),
         // All test source file
-        glob("./tests/**/*.lox").unwrap().map(handle_lox_file),
+        glob("./tests/**/*.yolo").unwrap().map(handle_yolo_file),
     )
     // Removing all files that maps to the same source
-    // In particular, this will remove `.lox` files when the `.test` one is already present
+    // In particular, this will remove `.yolo` files when the `.test` one is already present
     .unique_by(|r| {
         // Mapping each value to either the canonicalized path, or a unique increasing number
         r.as_ref()
@@ -139,7 +139,7 @@ fn handle_test_file(descr_source: Result<PathBuf, glob::GlobError>) -> anyhow::R
         parse_only,
     } = toml::from_str(&fs::read_to_string(&descr_source)?)?;
 
-    let source = source.unwrap_or_else(|| descr_source.with_extension("lox"));
+    let source = source.unwrap_or_else(|| descr_source.with_extension("yolo"));
     let name = name.unwrap_or_else(|| {
         source
             .file_stem()
@@ -158,7 +158,7 @@ fn handle_test_file(descr_source: Result<PathBuf, glob::GlobError>) -> anyhow::R
     })
 }
 
-fn handle_lox_file(source: Result<PathBuf, glob::GlobError>) -> anyhow::Result<Test> {
+fn handle_yolo_file(source: Result<PathBuf, glob::GlobError>) -> anyhow::Result<Test> {
     let source = source?;
 
     let TestDescription {

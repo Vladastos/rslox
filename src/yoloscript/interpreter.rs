@@ -1,5 +1,5 @@
 //! TODO:
-//!  - Change the return type of the `name()` method of `LoxValue` to `&str`.
+//!  - Change the return type of the `name()` method of `YoloValue` to `&str`.
 
 use log::debug;
 use ordered_float::OrderedFloat;
@@ -10,9 +10,9 @@ use std::rc::Rc;
 
 use super::builtins::init_builtins;
 use super::InterpreterError;
-use crate::rslox::capturer::Capturer;
-use crate::rslox::parser;
-use crate::rslox::parser::{Expr, Stmt};
+use crate::yoloscript::capturer::Capturer;
+use crate::yoloscript::parser;
+use crate::yoloscript::parser::{Expr, Stmt};
 
 /// Interpreter
 
@@ -103,7 +103,7 @@ impl Interpreter<'_> {
                 let value = if let Some(value) = value {
                     self.interpret_expression(value)?
                 } else {
-                    LoxValue::Nil
+                    YoloValue::Nil
                 };
                 Err(InterpreterError::Return { value })
             }
@@ -161,12 +161,12 @@ impl Interpreter<'_> {
     ///
     /// # Returns
     ///
-    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the expression is
+    /// * `Result<YoloValue, InterpreterError>` - Returns `Ok(YoloValue)` if the expression is
     /// successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_expression(
         &mut self,
         expression: &parser::Expr,
-    ) -> Result<LoxValue, InterpreterError> {
+    ) -> Result<YoloValue, InterpreterError> {
         match expression {
             Expr::Binary {
                 left,
@@ -190,7 +190,7 @@ impl Interpreter<'_> {
     ///
     /// If the variable declaration has an initializer, this function evaluates the initializer
     /// expression and assigns the result to the variable.
-    /// Otherwise, the variable is assigned the value `LoxValue::Nil`.
+    /// Otherwise, the variable is assigned the value `YoloValue::Nil`.
     ///
     /// # Arguments
     ///
@@ -209,7 +209,7 @@ impl Interpreter<'_> {
         let value = if let Some(initializer) = initializer {
             self.interpret_expression(&initializer)?
         } else {
-            LoxValue::Nil
+            YoloValue::Nil
         };
         self.environment.define_mutable(name.to_owned(), value);
         Ok(())
@@ -229,9 +229,9 @@ impl Interpreter<'_> {
 
     /// Interprets a function declaration and defines a ClojureFunction function in the current environment.
     ///
-    /// This function creates a new ClojureFunction `LoxValue` from the given function name, parameters,
+    /// This function creates a new ClojureFunction `YoloValue` from the given function name, parameters,
     /// and body. It then defines this function in the current environment, making it available
-    /// for invocation in the interpreted Lox code.
+    /// for invocation in the interpreted Yolo code.
     ///
     /// # Arguments
     ///
@@ -249,7 +249,7 @@ impl Interpreter<'_> {
         parameters: &[String],
         body: Box<parser::Stmt>,
     ) -> Result<(), InterpreterError> {
-        let function = LoxValue::ClojureFunction {
+        let function = YoloValue::ClojureFunction {
             name: name.to_owned(),
             captured_variables: self.capture_variables_in_function_body(&body)?,
             parameters: parameters.to_vec(),
@@ -263,7 +263,7 @@ impl Interpreter<'_> {
     fn capture_variables_in_function_body(
         &mut self,
         body: &parser::Stmt,
-    ) -> Result<HashMap<String, Rc<RefCell<LoxValueType>>>, InterpreterError> {
+    ) -> Result<HashMap<String, Rc<RefCell<YoloValueType>>>, InterpreterError> {
         Capturer::new(self.environment).capture(body)
     }
 
@@ -275,28 +275,28 @@ impl Interpreter<'_> {
     ///
     /// # Returns
     ///
-    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the variable is
+    /// * `Result<YoloValue, InterpreterError>` - Returns `Ok(YoloValue)` if the variable is
     /// defined, otherwise returns an `InterpreterError::UndefinedVariable`.
-    fn interpret_variable(&self, name: &str) -> Result<LoxValue, InterpreterError> {
+    fn interpret_variable(&self, name: &str) -> Result<YoloValue, InterpreterError> {
         self.environment
             .get(name)
             .ok_or_else(|| InterpreterError::UndefinedVariable {
                 name: name.to_owned(),
             })
     }
-    /// Converts a LoxParserValue to a LoxValue.
+    /// Converts a YoloParserValue to a YoloValue.
     ///
-    /// This function takes a LoxParserValue and returns its corresponding LoxValue.
-    /// If the LoxParserValue is not a valid LoxValue, it returns an InterpreterError.
+    /// This function takes a YoloParserValue and returns its corresponding YoloValue.
+    /// If the YoloParserValue is not a valid YoloValue, it returns an InterpreterError.
     fn interpret_literal(
         &self,
-        literal: &parser::LoxParserValue,
-    ) -> Result<LoxValue, InterpreterError> {
+        literal: &parser::YoloParserValue,
+    ) -> Result<YoloValue, InterpreterError> {
         match literal {
-            parser::LoxParserValue::Number(value) => Ok(LoxValue::Number(*value)),
-            parser::LoxParserValue::String(value) => Ok(LoxValue::String(value.clone())),
-            parser::LoxParserValue::Boolean(value) => Ok(LoxValue::Boolean(*value)),
-            parser::LoxParserValue::Nil => Ok(LoxValue::Nil),
+            parser::YoloParserValue::Number(value) => Ok(YoloValue::Number(*value)),
+            parser::YoloParserValue::String(value) => Ok(YoloValue::String(value.clone())),
+            parser::YoloParserValue::Boolean(value) => Ok(YoloValue::Boolean(*value)),
+            parser::YoloParserValue::Nil => Ok(YoloValue::Nil),
         }
     }
 
@@ -314,32 +314,32 @@ impl Interpreter<'_> {
     ///
     /// # Returns
     ///
-    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the binary expression
+    /// * `Result<YoloValue, InterpreterError>` - Returns `Ok(YoloValue)` if the binary expression
     /// is successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_binary(
         &mut self,
         left: &parser::Expr,
-        operator: &parser::LoxBinaryOperator,
+        operator: &parser::YoloBinaryOperator,
         right: &parser::Expr,
-    ) -> Result<LoxValue, InterpreterError> {
+    ) -> Result<YoloValue, InterpreterError> {
         let left = self.interpret_expression(left)?;
         let right = self.interpret_expression(right)?;
 
         match operator {
             // TODO: Instead of allowing type coercion, we should add a better print function to the standard library
-            parser::LoxBinaryOperator::Plus => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Number(left + right)),
-                    LoxValue::String(right) => Ok(LoxValue::String(left.to_string() + &right)),
+            parser::YoloBinaryOperator::Plus => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Number(left + right)),
+                    YoloValue::String(right) => Ok(YoloValue::String(left.to_string() + &right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number or string",
                     }),
                 },
-                LoxValue::String(left) => match right {
-                    LoxValue::String(right) => Ok(LoxValue::String(left + &right)),
-                    LoxValue::Number(right) => {
-                        Ok(LoxValue::String(left.to_string() + &right.to_string()))
+                YoloValue::String(left) => match right {
+                    YoloValue::String(right) => Ok(YoloValue::String(left + &right)),
+                    YoloValue::Number(right) => {
+                        Ok(YoloValue::String(left.to_string() + &right.to_string()))
                     }
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
@@ -351,9 +351,9 @@ impl Interpreter<'_> {
                     expected: "number or string",
                 }),
             },
-            parser::LoxBinaryOperator::Minus => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Number(left - right)),
+            parser::YoloBinaryOperator::Minus => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Number(left - right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -364,9 +364,9 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::Star => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Number(left * right)),
+            parser::YoloBinaryOperator::Star => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Number(left * right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -377,14 +377,14 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::Slash => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => {
+            parser::YoloBinaryOperator::Slash => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => {
                         let value = left / right;
                         if value.is_infinite() {
                             return Err(InterpreterError::DivisionByZero);
                         }
-                        Ok(LoxValue::Number(value))
+                        Ok(YoloValue::Number(value))
                     }
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
@@ -396,9 +396,9 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::Greater => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left > right)),
+            parser::YoloBinaryOperator::Greater => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Boolean(left > right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -409,9 +409,9 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::GreaterEqual => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left >= right)),
+            parser::YoloBinaryOperator::GreaterEqual => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Boolean(left >= right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -422,9 +422,9 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::Less => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left < right)),
+            parser::YoloBinaryOperator::Less => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Boolean(left < right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -435,9 +435,9 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::LessEqual => match left {
-                LoxValue::Number(left) => match right {
-                    LoxValue::Number(right) => Ok(LoxValue::Boolean(left <= right)),
+            parser::YoloBinaryOperator::LessEqual => match left {
+                YoloValue::Number(left) => match right {
+                    YoloValue::Number(right) => Ok(YoloValue::Boolean(left <= right)),
                     _ => Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
                         expected: "number",
@@ -448,16 +448,16 @@ impl Interpreter<'_> {
                     expected: "number",
                 }),
             },
-            parser::LoxBinaryOperator::BangEqual => Ok(LoxValue::Boolean(left != right)),
-            parser::LoxBinaryOperator::EqualEqual => Ok(LoxValue::Boolean(left == right)),
-            parser::LoxBinaryOperator::And => {
+            parser::YoloBinaryOperator::BangEqual => Ok(YoloValue::Boolean(left != right)),
+            parser::YoloBinaryOperator::EqualEqual => Ok(YoloValue::Boolean(left == right)),
+            parser::YoloBinaryOperator::And => {
                 if left.is_truthy() {
                     Ok(right)
                 } else {
                     Ok(left)
                 }
             }
-            parser::LoxBinaryOperator::Or => {
+            parser::YoloBinaryOperator::Or => {
                 if !left.is_truthy() {
                     Ok(right)
                 } else {
@@ -480,23 +480,23 @@ impl Interpreter<'_> {
     ///
     /// # Returns
     ///
-    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the expression is
+    /// * `Result<YoloValue, InterpreterError>` - Returns `Ok(YoloValue)` if the expression is
     /// successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_unary(
         &mut self,
-        operator: &parser::LoxUnaryOperator,
+        operator: &parser::YoloUnaryOperator,
         right: &parser::Expr,
-    ) -> Result<LoxValue, InterpreterError> {
+    ) -> Result<YoloValue, InterpreterError> {
         let right = self.interpret_expression(right)?;
 
-        if let LoxValue::Nil = right {
-            return Ok(LoxValue::Nil);
+        if let YoloValue::Nil = right {
+            return Ok(YoloValue::Nil);
         }
 
         match operator {
-            parser::LoxUnaryOperator::Minus => {
-                if let LoxValue::Number(right) = right {
-                    Ok(LoxValue::Number(-right))
+            parser::YoloUnaryOperator::Minus => {
+                if let YoloValue::Number(right) = right {
+                    Ok(YoloValue::Number(-right))
                 } else {
                     Err(InterpreterError::InvalidOperandType {
                         found: right.name(),
@@ -504,7 +504,7 @@ impl Interpreter<'_> {
                     })
                 }
             }
-            parser::LoxUnaryOperator::Bang => Ok(LoxValue::Boolean(!right.is_truthy())),
+            parser::YoloUnaryOperator::Bang => Ok(YoloValue::Boolean(!right.is_truthy())),
         }
     }
 
@@ -521,19 +521,19 @@ impl Interpreter<'_> {
     ///
     /// # Returns
     ///
-    /// * `Result<LoxValue, InterpreterError>` - Returns `Ok(LoxValue)` if the expression is
+    /// * `Result<YoloValue, InterpreterError>` - Returns `Ok(YoloValue)` if the expression is
     /// successfully evaluated, otherwise returns an `InterpreterError`.
     fn interpret_call(
         &mut self,
         callee: &parser::Expr,
         arguments: &[parser::Expr],
-    ) -> Result<LoxValue, InterpreterError> {
+    ) -> Result<YoloValue, InterpreterError> {
         let callee = self.interpret_expression(callee)?;
 
         let arguments = arguments
             .iter()
             .map(|argument| self.interpret_expression(argument))
-            .collect::<Result<Vec<LoxValue>, InterpreterError>>()?;
+            .collect::<Result<Vec<YoloValue>, InterpreterError>>()?;
 
         return callee.call(self, &arguments);
     }
@@ -543,7 +543,7 @@ impl Interpreter<'_> {
 #[derive(Debug, Clone)]
 pub struct Environment {
     parent: Option<Box<Environment>>,
-    values: HashMap<String, Rc<RefCell<LoxValueType>>>,
+    values: HashMap<String, Rc<RefCell<YoloValueType>>>,
 }
 
 impl Environment {
@@ -554,29 +554,29 @@ impl Environment {
         }
     }
 
-    pub fn define_constant(&mut self, name: String, value: LoxValue) {
+    pub fn define_constant(&mut self, name: String, value: YoloValue) {
         self.values
-            .insert(name, Rc::new(RefCell::new(LoxValueType::Constant(value))));
+            .insert(name, Rc::new(RefCell::new(YoloValueType::Constant(value))));
     }
 
     /// This allows us to insert a constant into the environment by reference
-    pub fn inject_variable(&mut self, name: String, value: &Rc<RefCell<LoxValueType>>) {
+    pub fn inject_variable(&mut self, name: String, value: &Rc<RefCell<YoloValueType>>) {
         self.values.insert(name, value.clone());
     }
 
-    pub fn extract_variable(&self, name: &str) -> Option<Rc<RefCell<LoxValueType>>> {
+    pub fn extract_variable(&self, name: &str) -> Option<Rc<RefCell<YoloValueType>>> {
         self.values.get(name).cloned()
     }
-    pub fn define_mutable(&mut self, name: String, value: LoxValue) {
+    pub fn define_mutable(&mut self, name: String, value: YoloValue) {
         self.values
-            .insert(name, Rc::new(RefCell::new(LoxValueType::Mutable(value))));
+            .insert(name, Rc::new(RefCell::new(YoloValueType::Mutable(value))));
     }
 
-    pub fn get(&self, name: &str) -> Option<LoxValue> {
+    pub fn get(&self, name: &str) -> Option<YoloValue> {
         match self.values.get(name) {
             Some(value) => Some(match value.as_ref().borrow().deref() {
-                LoxValueType::Constant(value) => value.clone(),
-                LoxValueType::Mutable(value) => value.clone(),
+                YoloValueType::Constant(value) => value.clone(),
+                YoloValueType::Mutable(value) => value.clone(),
             }),
             None => match &self.parent {
                 Some(parent) => parent.get(name),
@@ -588,14 +588,14 @@ impl Environment {
     pub fn assign(
         &mut self,
         name: &str,
-        new_value: LoxValue,
-    ) -> Result<LoxValue, InterpreterError> {
+        new_value: YoloValue,
+    ) -> Result<YoloValue, InterpreterError> {
         match self.values.get_mut(name) {
             Some(value) => match value.as_ref().borrow_mut().deref_mut() {
-                LoxValueType::Constant(_) => Err(InterpreterError::CannotAssingnToConstant {
+                YoloValueType::Constant(_) => Err(InterpreterError::CannotAssingnToConstant {
                     name: name.to_string(),
                 }),
-                LoxValueType::Mutable(value) => {
+                YoloValueType::Mutable(value) => {
                     *value = new_value.clone();
                     Ok(new_value)
                 }
@@ -648,74 +648,74 @@ impl Environment {
     }
 }
 
-/// The type of a Lox value.
+/// The type of a Yolo value.
 /// Either a constant value or a mutable value.
 #[derive(Debug, Clone)]
-pub enum LoxValueType {
-    Constant(LoxValue),
-    Mutable(LoxValue),
+pub enum YoloValueType {
+    Constant(YoloValue),
+    Mutable(YoloValue),
 }
 
-/// The internal representation of a Lox value.
+/// The internal representation of a Yolo value.
 #[derive(Debug, Clone)]
-pub enum LoxValue {
+pub enum YoloValue {
     Number(OrderedFloat<f64>),
     String(String),
     Boolean(bool),
     ClojureFunction {
         name: String,
         body: Option<Box<parser::Stmt>>,
-        captured_variables: HashMap<String, Rc<RefCell<LoxValueType>>>,
+        captured_variables: HashMap<String, Rc<RefCell<YoloValueType>>>,
         parameters: Vec<String>,
     },
     BuiltinFunction {
         name: String,
         parameters: Vec<String>,
-        function: fn(&mut Interpreter, &[LoxValue]) -> Result<LoxValue, InterpreterError>,
+        function: fn(&mut Interpreter, &[YoloValue]) -> Result<YoloValue, InterpreterError>,
     },
     Nil,
 }
 
-impl PartialEq for LoxValue {
+impl PartialEq for YoloValue {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (LoxValue::Number(left), LoxValue::Number(right)) => left == right,
-            (LoxValue::String(left), LoxValue::String(right)) => left == right,
-            (LoxValue::Boolean(left), LoxValue::Boolean(right)) => left == right,
-            (LoxValue::Nil, LoxValue::Nil) => true,
+            (YoloValue::Number(left), YoloValue::Number(right)) => left == right,
+            (YoloValue::String(left), YoloValue::String(right)) => left == right,
+            (YoloValue::Boolean(left), YoloValue::Boolean(right)) => left == right,
+            (YoloValue::Nil, YoloValue::Nil) => true,
             _ => false,
         }
     }
 }
 
-impl LoxValue {
+impl YoloValue {
     fn is_truthy(&self) -> bool {
         match self {
-            LoxValue::Nil => false,
-            LoxValue::Boolean(value) => *value,
-            LoxValue::Number(value) => !value.is_nan() && !value.is_infinite() && *value != 0.0,
+            YoloValue::Nil => false,
+            YoloValue::Boolean(value) => *value,
+            YoloValue::Number(value) => !value.is_nan() && !value.is_infinite() && *value != 0.0,
             _ => true,
         }
     }
 
     fn name(&self) -> String {
         match self {
-            LoxValue::Number(_) => "number".to_string(),
-            LoxValue::String(_) => "string".to_string(),
-            LoxValue::Boolean(_) => "boolean".to_string(),
-            LoxValue::ClojureFunction { .. } => "function".to_string(),
-            LoxValue::BuiltinFunction { .. } => "function".to_string(),
-            LoxValue::Nil => "nil".to_string(),
+            YoloValue::Number(_) => "number".to_string(),
+            YoloValue::String(_) => "string".to_string(),
+            YoloValue::Boolean(_) => "boolean".to_string(),
+            YoloValue::ClojureFunction { .. } => "function".to_string(),
+            YoloValue::BuiltinFunction { .. } => "function".to_string(),
+            YoloValue::Nil => "nil".to_string(),
         }
     }
 
     fn call(
         &self,
         interpreter: &mut Interpreter,
-        arguments: &[LoxValue],
-    ) -> Result<LoxValue, InterpreterError> {
+        arguments: &[YoloValue],
+    ) -> Result<YoloValue, InterpreterError> {
         return match self {
-            LoxValue::ClojureFunction {
+            YoloValue::ClojureFunction {
                 body,
                 parameters,
                 captured_variables,
@@ -752,8 +752,8 @@ impl LoxValue {
                 let interpreter_result = interpreter.interpret_statement(&body.clone().unwrap());
 
                 interpreter.environment.restore_scope();
-                let return_value: Result<LoxValue, InterpreterError> = match interpreter_result {
-                    Ok(_value) => Ok(LoxValue::Nil),
+                let return_value: Result<YoloValue, InterpreterError> = match interpreter_result {
+                    Ok(_value) => Ok(YoloValue::Nil),
                     Err(InterpreterError::Return { value }) => Ok(value),
                     Err(error) => Err(error),
                 };
@@ -761,7 +761,7 @@ impl LoxValue {
 
                 return_value
             }
-            LoxValue::BuiltinFunction {
+            YoloValue::BuiltinFunction {
                 parameters,
                 function,
                 ..
@@ -780,15 +780,15 @@ impl LoxValue {
     }
 }
 
-impl std::fmt::Display for LoxValue {
+impl std::fmt::Display for YoloValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoxValue::Number(value) => write!(f, "{}", value),
-            LoxValue::String(value) => write!(f, "{}", value),
-            LoxValue::Boolean(value) => write!(f, "{}", value),
-            LoxValue::ClojureFunction { name, .. } => write!(f, "<fn {}>", name),
-            LoxValue::BuiltinFunction { name, .. } => write!(f, "<fn {}>", name),
-            LoxValue::Nil => write!(f, "nil"),
+            YoloValue::Number(value) => write!(f, "{}", value),
+            YoloValue::String(value) => write!(f, "{}", value),
+            YoloValue::Boolean(value) => write!(f, "{}", value),
+            YoloValue::ClojureFunction { name, .. } => write!(f, "<fn {}>", name),
+            YoloValue::BuiltinFunction { name, .. } => write!(f, "<fn {}>", name),
+            YoloValue::Nil => write!(f, "nil"),
         }
     }
 }

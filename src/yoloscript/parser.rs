@@ -4,7 +4,7 @@
 
 use ordered_float::OrderedFloat;
 
-use crate::rslox::scanner;
+use crate::yoloscript::scanner;
 
 use super::{scanner::Token, ParserError};
 
@@ -275,7 +275,7 @@ impl Parser {
                 self.parse_statement()?,
                 Stmt::Expression {
                     expression: increment.unwrap_or(Expr::Literal {
-                        value: LoxParserValue::Nil,
+                        value: YoloParserValue::Nil,
                     }),
                 },
             ],
@@ -285,12 +285,12 @@ impl Parser {
             statements: vec![
                 *initializer.unwrap_or(Box::from(Stmt::Expression {
                     expression: Expr::Literal {
-                        value: LoxParserValue::Nil,
+                        value: YoloParserValue::Nil,
                     },
                 })),
                 Stmt::While {
                     condition: condition.unwrap_or(Expr::Literal {
-                        value: LoxParserValue::Boolean(true),
+                        value: YoloParserValue::Boolean(true),
                     }),
                     body,
                 },
@@ -400,7 +400,7 @@ impl Parser {
         let mut expr = self.parse_logical_and()?;
         while let Some(operator) = self.match_token(scanner::TokenType::Or) {
             let right = self.parse_logical_and()?;
-            let operator = LoxBinaryOperator::try_from(operator)?;
+            let operator = YoloBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -421,7 +421,7 @@ impl Parser {
         let mut expr = self.parse_comparison()?;
         while let Some(operator) = self.match_token(scanner::TokenType::And) {
             let right = self.parse_comparison()?;
-            let operator = LoxBinaryOperator::try_from(operator)?;
+            let operator = YoloBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -449,7 +449,7 @@ impl Parser {
             scanner::TokenType::EqualEqual,
         ]) {
             let right = self.parse_term().unwrap();
-            let operator = LoxBinaryOperator::try_from(operator)?;
+            let operator = YoloBinaryOperator::try_from(operator)?;
             expr = Expr::Binary {
                 left: Box::new(expr),
                 operator,
@@ -474,7 +474,7 @@ impl Parser {
         {
             let right = self.parse_factor()?;
 
-            let operator = LoxBinaryOperator::try_from(operator)?;
+            let operator = YoloBinaryOperator::try_from(operator)?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -500,7 +500,7 @@ impl Parser {
         {
             let right = self.parse_unary()?;
 
-            let operator = LoxBinaryOperator::try_from(operator)?;
+            let operator = YoloBinaryOperator::try_from(operator)?;
 
             expr = Expr::Binary {
                 left: Box::new(expr),
@@ -526,7 +526,7 @@ impl Parser {
         {
             let right = self.parse_unary()?;
 
-            let operator = LoxUnaryOperator::try_from(operator)?;
+            let operator = YoloUnaryOperator::try_from(operator)?;
 
             return Ok(Expr::Unary {
                 operator,
@@ -575,27 +575,27 @@ impl Parser {
     fn parse_primary(&mut self) -> Result<Expr, ParserError> {
         if self.match_token(scanner::TokenType::False).is_some() {
             return Ok(Expr::Literal {
-                value: LoxParserValue::Boolean(false),
+                value: YoloParserValue::Boolean(false),
             });
         }
         if self.match_token(scanner::TokenType::True).is_some() {
             return Ok(Expr::Literal {
-                value: LoxParserValue::Boolean(true),
+                value: YoloParserValue::Boolean(true),
             });
         }
         if self.match_token(scanner::TokenType::Nil).is_some() {
             return Ok(Expr::Literal {
-                value: LoxParserValue::Nil,
+                value: YoloParserValue::Nil,
             });
         }
         if let Some(token) = self.match_token(scanner::TokenType::Number) {
             return Ok(Expr::Literal {
-                value: LoxParserValue::Number(token.literal.unwrap().parse().unwrap()),
+                value: YoloParserValue::Number(token.literal.unwrap().parse().unwrap()),
             });
         }
         if let Some(token) = self.match_token(scanner::TokenType::String) {
             return Ok(Expr::Literal {
-                value: LoxParserValue::String(token.literal.unwrap()),
+                value: YoloParserValue::String(token.literal.unwrap()),
             });
         }
         if let Some(token) = self.match_token(scanner::TokenType::Identifier) {
@@ -704,7 +704,7 @@ impl Parser {
     /// Consumes tokens until it reaches the start of the next statement, or the end of the file.
     /// Used to recover from a parse error.
     ///
-    /// The list of "statement start" tokens is based on the Lox language definition.
+    /// The list of "statement start" tokens is based on the Yolo language definition.
     ///
     fn synchronize(&mut self) {
         // TODO: Fix synchronize when the error is unexpected semicolon (should just skip the semicolon)
@@ -777,17 +777,17 @@ pub enum Stmt {
 pub enum Expr {
     Binary {
         left: Box<Expr>,
-        operator: LoxBinaryOperator,
+        operator: YoloBinaryOperator,
         right: Box<Expr>,
     },
     Grouping {
         expression: Box<Expr>,
     },
     Literal {
-        value: LoxParserValue,
+        value: YoloParserValue,
     },
     Unary {
-        operator: LoxUnaryOperator,
+        operator: YoloUnaryOperator,
         right: Box<Expr>,
     },
     Variable {
@@ -804,7 +804,7 @@ pub enum Expr {
 }
 
 #[derive(Debug, Clone)]
-pub enum LoxParserValue {
+pub enum YoloParserValue {
     Number(OrderedFloat<f64>),
     String(String),
     Boolean(bool),
@@ -812,7 +812,7 @@ pub enum LoxParserValue {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum LoxBinaryOperator {
+pub enum YoloBinaryOperator {
     Plus,
     Minus,
     Star,
@@ -827,41 +827,41 @@ pub enum LoxBinaryOperator {
     Or,
 }
 
-impl std::fmt::Display for LoxBinaryOperator {
+impl std::fmt::Display for YoloBinaryOperator {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LoxBinaryOperator::Plus => write!(f, "+"),
-            LoxBinaryOperator::Minus => write!(f, "-"),
-            LoxBinaryOperator::Star => write!(f, "*"),
-            LoxBinaryOperator::Slash => write!(f, "/"),
-            LoxBinaryOperator::EqualEqual => write!(f, "=="),
-            LoxBinaryOperator::BangEqual => write!(f, "!="),
-            LoxBinaryOperator::Greater => write!(f, ">"),
-            LoxBinaryOperator::GreaterEqual => write!(f, ">="),
-            LoxBinaryOperator::Less => write!(f, "<"),
-            LoxBinaryOperator::LessEqual => write!(f, "<="),
-            LoxBinaryOperator::And => write!(f, "&&"),
-            LoxBinaryOperator::Or => write!(f, "||"),
+            YoloBinaryOperator::Plus => write!(f, "+"),
+            YoloBinaryOperator::Minus => write!(f, "-"),
+            YoloBinaryOperator::Star => write!(f, "*"),
+            YoloBinaryOperator::Slash => write!(f, "/"),
+            YoloBinaryOperator::EqualEqual => write!(f, "=="),
+            YoloBinaryOperator::BangEqual => write!(f, "!="),
+            YoloBinaryOperator::Greater => write!(f, ">"),
+            YoloBinaryOperator::GreaterEqual => write!(f, ">="),
+            YoloBinaryOperator::Less => write!(f, "<"),
+            YoloBinaryOperator::LessEqual => write!(f, "<="),
+            YoloBinaryOperator::And => write!(f, "&&"),
+            YoloBinaryOperator::Or => write!(f, "||"),
         }
     }
 }
 
-impl TryFrom<scanner::Token> for LoxBinaryOperator {
+impl TryFrom<scanner::Token> for YoloBinaryOperator {
     type Error = ParserError;
     fn try_from(value: scanner::Token) -> Result<Self, ParserError> {
         match value.token_type {
-            scanner::TokenType::Plus => Ok(LoxBinaryOperator::Plus),
-            scanner::TokenType::Minus => Ok(LoxBinaryOperator::Minus),
-            scanner::TokenType::Star => Ok(LoxBinaryOperator::Star),
-            scanner::TokenType::Slash => Ok(LoxBinaryOperator::Slash),
-            scanner::TokenType::EqualEqual => Ok(LoxBinaryOperator::EqualEqual),
-            scanner::TokenType::BangEqual => Ok(LoxBinaryOperator::BangEqual),
-            scanner::TokenType::Greater => Ok(LoxBinaryOperator::Greater),
-            scanner::TokenType::GreaterEqual => Ok(LoxBinaryOperator::GreaterEqual),
-            scanner::TokenType::Less => Ok(LoxBinaryOperator::Less),
-            scanner::TokenType::LessEqual => Ok(LoxBinaryOperator::LessEqual),
-            scanner::TokenType::And => Ok(LoxBinaryOperator::And),
-            scanner::TokenType::Or => Ok(LoxBinaryOperator::Or),
+            scanner::TokenType::Plus => Ok(YoloBinaryOperator::Plus),
+            scanner::TokenType::Minus => Ok(YoloBinaryOperator::Minus),
+            scanner::TokenType::Star => Ok(YoloBinaryOperator::Star),
+            scanner::TokenType::Slash => Ok(YoloBinaryOperator::Slash),
+            scanner::TokenType::EqualEqual => Ok(YoloBinaryOperator::EqualEqual),
+            scanner::TokenType::BangEqual => Ok(YoloBinaryOperator::BangEqual),
+            scanner::TokenType::Greater => Ok(YoloBinaryOperator::Greater),
+            scanner::TokenType::GreaterEqual => Ok(YoloBinaryOperator::GreaterEqual),
+            scanner::TokenType::Less => Ok(YoloBinaryOperator::Less),
+            scanner::TokenType::LessEqual => Ok(YoloBinaryOperator::LessEqual),
+            scanner::TokenType::And => Ok(YoloBinaryOperator::And),
+            scanner::TokenType::Or => Ok(YoloBinaryOperator::Or),
             _ => Err(ParserError::UnexpectedTokenNoExpected {
                 token_type: value.token_type,
                 line: value.line,
@@ -872,17 +872,17 @@ impl TryFrom<scanner::Token> for LoxBinaryOperator {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum LoxUnaryOperator {
+pub enum YoloUnaryOperator {
     Minus,
     Bang,
 }
 
-impl TryFrom<scanner::Token> for LoxUnaryOperator {
+impl TryFrom<scanner::Token> for YoloUnaryOperator {
     type Error = ParserError;
     fn try_from(value: scanner::Token) -> Result<Self, ParserError> {
         match value.token_type {
-            scanner::TokenType::Minus => Ok(LoxUnaryOperator::Minus),
-            scanner::TokenType::Bang => Ok(LoxUnaryOperator::Bang),
+            scanner::TokenType::Minus => Ok(YoloUnaryOperator::Minus),
+            scanner::TokenType::Bang => Ok(YoloUnaryOperator::Bang),
             _ => Err(ParserError::UnexpectedTokenNoExpected {
                 token_type: value.token_type,
                 line: value.line,

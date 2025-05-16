@@ -29,7 +29,7 @@ static KEYWORDS: LazyLock<HashMap<&'static str, TokenType>> = LazyLock::new(|| {
     ])
 });
 
-/// Scanner for the Lox programming language.
+/// Scanner for the Yolo programming language.
 /// This is a simple scanner that reads characters from the source string and returns tokens.
 
 pub struct Scanner {

@@ -313,26 +313,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
-name = "rslox"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cargo-emit",
- "clap",
- "const-gen",
- "env_logger",
- "glob",
- "itertools",
- "log",
- "ordered-float",
- "proc-macro2",
- "quote",
- "serde",
- "thiserror",
- "toml",
-]
-
-[[package]]
 name = "serde"
 version = "1.0.217"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -535,4 +515,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "86e376c75f4f43f44db463cf729e0d3acbf954d13e22c51e26e4c264b4ab545f"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "yoloscript"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cargo-emit",
+ "clap",
+ "const-gen",
+ "env_logger",
+ "glob",
+ "itertools",
+ "log",
+ "ordered-float",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "thiserror",
+ "toml",
 ]
